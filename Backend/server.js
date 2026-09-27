@@ -25,6 +25,8 @@ const {
 } = require('./utils/errorEnvelope');
 const rateLimits = require('./config/rateLimits');
 const { assertValidRateLimits } = require('./config/rateLimitsValidation');
+const { assertValidMarketMigrations } = require('./services/marketMigrationValidator');
+const { marketMigrationGuard } = require('./middleware/marketMigrationGuard');
 
 // API protection middlewares (Backend/API_PROTECTION_README.md) — same stack as NestJS (Backend/src/main.ts)
 let ddosGuard, throttle, versionMiddleware, backwardCompatMiddleware;
@@ -49,10 +51,24 @@ for (const warning of rateLimitReport.warnings) {
   console.warn(`[server] ${warning}`);
 }
 
+// Perform market migration sanity check before enabling market endpoints or taking traffic
+assertValidMarketMigrations()
+  .then((report) => {
+    log('info', `[server] Market migration check passed (${report.appliedCount}/${report.totalCount} applied)`);
+  })
+  .catch((err) => {
+    console.error('[server] FATAL: Market migration check failed before server startup:');
+    console.error(err.message);
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
+    }
+  });
+
 app.use(cors());
 app.use(express.json());
 app.use(expressCorrelationMiddleware);
 app.use(expressErrorEnvelopeMiddleware);
+app.use(marketMigrationGuard());
 
 // Apply API protection globally if available (order: DDoS → throttle → version → compat)
 try {
