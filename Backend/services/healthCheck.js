@@ -11,12 +11,14 @@ const { ethers } = require('ethers');
 const Redis = require('ioredis');
 const axios = require('axios');
 
+const { validateMarketMigrations } = require('./marketMigrationValidator');
+
 // Helper to determine component status based on check results
 function getOverallStatus(components) {
   const values = Object.values(components);
   if (values.some(v => v.status === 'DOWN')) {
-    // If the database is DOWN, the system is DOWN.
-    if (components.mongodb.status === 'DOWN') {
+    // If the database or market migrations are DOWN, the system is DOWN.
+    if (components.mongodb.status === 'DOWN' || components.marketMigration?.status === 'DOWN') {
       return 'DOWN';
     }
     return 'DEGRADED';
@@ -234,22 +236,53 @@ function getSystemMetrics() {
   };
 }
 
+async function checkMarketMigrations() {
+  try {
+    const report = await validateMarketMigrations();
+    if (!report.valid) {
+      return {
+        status: 'DOWN',
+        error: `Market database migrations pending or incomplete: ${report.errors.join('; ')}`,
+        details: {
+          applied: report.appliedCount,
+          total: report.totalCount,
+          pending: report.pendingMigrations,
+          schemaErrors: report.schemaErrors,
+        },
+      };
+    }
+    return {
+      status: 'UP',
+      details: {
+        applied: report.appliedCount,
+        total: report.totalCount,
+      },
+    };
+  } catch (error) {
+    return {
+      status: 'DOWN',
+      error: error.message,
+    };
+  }
+}
+
 /**
  * Generates a comprehensive report of all system dependencies and component statuses.
  *
  * @returns {Promise<object>} Consolidated health report
  */
 async function generateHealthReport() {
-  const [mongodb, redis, rpc, aviationStack, aiProvider] = await Promise.all([
+  const [mongodb, redis, rpc, aviationStack, aiProvider, marketMigration] = await Promise.all([
     checkDatabase(),
     checkRedis(),
     checkBlockchain(),
     checkAviationStack(),
     checkAiProvider(),
+    checkMarketMigrations(),
   ]);
 
   const system = getSystemMetrics();
-  const components = { mongodb, redis, rpc, aviationStack, aiProvider, system };
+  const components = { mongodb, redis, rpc, aviationStack, aiProvider, marketMigration, system };
   
   const status = getOverallStatus(components);
 
@@ -266,6 +299,7 @@ module.exports = {
   checkDatabase,
   checkBlockchain,
   checkRedis,
+  checkMarketMigrations,
   generateHealthReport,
 };
 
