@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:smoke": "playwright test",
     "docker:build": "docker build -t gatedelay-frontend:local .",
     "docker:smoke": "bash scripts/smoke-test.sh gatedelay-frontend:local"
   },
@@ -63,6 +64,7 @@
     "jsdom": "^26.0.0",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "@playwright/test": "^1.49.1",
     "vitest": "^3.0.5"
   },
   "overrides": {
