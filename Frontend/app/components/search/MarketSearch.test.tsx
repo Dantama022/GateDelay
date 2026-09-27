@@ -24,7 +24,7 @@ import MarketSearch, { type Market } from "./MarketSearch";
 // ─── next/navigation mock ─────────────────────────────────────────────────────
 // Some test cases import the search page, which calls useSearchParams(). We
 // need a controllable mock so we can feed arbitrary URL params.
-const mockSearchParams = vi.fn<[], ReadonlyURLSearchParams>();
+const mockSearchParams = vi.fn<() => ReadonlyURLSearchParams>();
 vi.mock("next/navigation", () => ({
   useSearchParams: () => mockSearchParams(),
 }));
