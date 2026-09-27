@@ -118,6 +118,34 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT ?? 4000;
+
+  // Enable NestJS shutdown hooks for signal lifecycle handling
+  app.enableShutdownHooks();
+
+  // Register NestJS resources with the central GracefulShutdownManager
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const gracefulShutdownManager = require('../services/gracefulShutdown');
+  gracefulShutdownManager.registerIngress(
+    'NestJS HTTP Server',
+    () =>
+      new Promise<void>((resolve) => {
+        const server = app.getHttpServer();
+        if (server && typeof server.close === 'function') {
+          server.close(() => resolve());
+        } else {
+          resolve();
+        }
+      }),
+  );
+
+  gracefulShutdownManager.registerDatabase('NestJS App Teardown', async () => {
+    await app.close();
+  });
+
+  if (process.env.NODE_ENV !== 'test') {
+    gracefulShutdownManager.attachSignalListeners();
+  }
+
   await app.listen(port);
   log('info', 'GateDelay Nest backend started', {
     service: 'gatedelay-backend-nest',
