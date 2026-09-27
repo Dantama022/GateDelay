@@ -3,12 +3,18 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { MarketListSkeleton } from "./components/ui/Skeleton";
 import QuickTradeWidget from "../components/trade/QuickTradeWidget";
+import { formatOdds, formatVolume } from "@/lib/formatters";
 
-const SAMPLE_MARKETS = [
-  { id: "1", title: "Will AA123 arrive on time?", yesPrice: 0.62, volume: 14820, status: "open" },
-  { id: "2", title: "Will UA456 be delayed > 30 min?", yesPrice: 0.41, volume: 8300, status: "open" },
-  { id: "3", title: "Will DL789 be cancelled?", yesPrice: 0.08, volume: 3200, status: "open" },
-];
+// Replace with a real API call (e.g. fetch /api/markets) once the backend
+// market-list endpoint is available.
+type HomeMarket = {
+  id: string;
+  title: string;
+  yesPrice: number;
+  volume: number;
+};
+
+const SAMPLE_MARKETS: HomeMarket[] = [];
 
 export default function Home() {
   return (
@@ -45,15 +51,15 @@ export default function Home() {
                   <div>
                     <p className="font-medium text-sm" style={{ color: "var(--foreground)" }}>{m.title}</p>
                     <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
-                      Vol: ${m.volume.toLocaleString()}
+                      Vol: {formatVolume(m.volume)}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold" style={{ color: "#22c55e" }}>
-                      YES {(m.yesPrice * 100).toFixed(0)}¢
+                      YES {formatOdds(m.yesPrice)}
                     </p>
                     <p className="text-xs" style={{ color: "#ef4444" }}>
-                      NO {((1 - m.yesPrice) * 100).toFixed(0)}¢
+                      NO {formatOdds(1 - m.yesPrice)}
                     </p>
                   </div>
                 </Link>

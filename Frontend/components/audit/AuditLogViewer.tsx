@@ -236,17 +236,25 @@ export default function AuditLogViewer() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  // Fetch real backend data
+  // Fetch real backend data.
+  //
+  // The endpoint returns `{ success, data, meta }` so it can be paged alongside
+  // the other list endpoints (#916), but a bare array is still accepted so this
+  // viewer keeps working against an older backend. `limit` is capped at 1000 by
+  // the backend DTO — requesting more is a 400, not a silent truncation.
   const { data: backendLogs = [], isLoading, isError, refetch } = useQuery<AuditLog[], Error>({
     queryKey: ["market-audit-logs"],
     queryFn: async () => {
-      const res = await fetch("/api/market-audit?limit=2000", {
+      const res = await fetch("/api/market-audit?limit=1000", {
         method: "GET",
       });
       if (!res.ok) {
         throw new Error(`API failed: ${res.statusText}`);
       }
-      return (await res.json()) as AuditLog[];
+      const payload = await res.json();
+      if (Array.isArray(payload)) return payload as AuditLog[];
+      if (payload && Array.isArray(payload.data)) return payload.data as AuditLog[];
+      throw new Error("Unexpected audit-log payload shape");
     },
     retry: 1,
   });
@@ -368,9 +376,9 @@ export default function AuditLogViewer() {
   const pageCount = table.getPageCount();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div
           className="rounded-2xl p-5 flex items-center justify-between"
           style={{ background: "var(--card)", border: "1px solid var(--border)" }}
@@ -460,7 +468,7 @@ export default function AuditLogViewer() {
           </div>
 
           {/* Quick Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => refetch()}
               title="Refresh logs from API"
@@ -574,8 +582,8 @@ export default function AuditLogViewer() {
       </div>
 
       {/* Main Table Grid */}
-      <div className="overflow-x-auto rounded-2xl border" style={{ borderColor: "var(--border)" }}>
-        <table className="w-full text-left text-xs border-collapse">
+      <div className="w-full max-w-full overflow-x-auto rounded-2xl border" style={{ borderColor: "var(--border)" }}>
+        <table className="w-full min-w-[880px] text-left text-xs border-collapse">
           <thead>
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id} style={{ background: "var(--card)", borderBottom: "1px solid var(--border)" }}>

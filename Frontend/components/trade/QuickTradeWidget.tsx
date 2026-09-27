@@ -5,6 +5,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagm
 import { useToast } from "../../hooks/useToast";
 import { useSettings } from "../../hooks/useSettings";
 import { ErrorBoundary } from "../../app/components/ui/ErrorBoundary";
+import { isParticleConnectKitConfigured } from "../../lib/walletDetection";
 import { 
   Zap, 
   Loader2, 
@@ -362,6 +363,7 @@ function QuickTradeWidgetInner() {
             onClick={() => setOneClickMode(!oneClickMode)}
             className={`w-9 h-5 rounded-full p-0.5 transition-colors relative flex items-center ${oneClickMode ? "bg-blue-600" : "bg-zinc-300 dark:bg-zinc-800"}`}
             aria-label="Toggle One-Click Mode"
+            title="Toggle One-Click Mode"
           >
             <motion.div 
               layout 
@@ -681,10 +683,32 @@ function QuickTradeWidgetInner() {
 
 // ─── Export wrapped with ErrorBoundary ───────────────────────────────────────
 
+function QuickTradeWidgetGate() {
+  if (!isParticleConnectKitConfigured()) {
+    return (
+      <div
+        data-testid="quick-trade-wallet-required"
+        className="rounded-xl px-5 py-4 text-sm"
+        style={{ background: "var(--card)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+      >
+        <p className="font-medium">Quick trade needs a wallet provider</p>
+        <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+          Wagmi hooks in this widget require Particle ConnectKit. Set{" "}
+          <code>NEXT_PUBLIC_PROJECT_ID</code>, <code>NEXT_PUBLIC_CLIENT_KEY</code>, and{" "}
+          <code>NEXT_PUBLIC_APP_ID</code> in <code>Frontend/.env.local</code> (see{" "}
+          <code>CONTRIBUTING.md</code>), then use Connect Wallet in the navbar.
+        </p>
+      </div>
+    );
+  }
+
+  return <QuickTradeWidgetInner />;
+}
+
 export default function QuickTradeWidget() {
   return (
-    <ErrorBoundary level="component">
-      <QuickTradeWidgetInner />
+    <ErrorBoundary level="component" showDetails>
+      <QuickTradeWidgetGate />
     </ErrorBoundary>
   );
 }
