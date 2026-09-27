@@ -26,15 +26,16 @@ const handleErrors = (fn) => async (req, res, next) => {
 router.get('/wallet/:walletId', handleErrors(async (req, res) => {
   const { walletId } = req.params;
   const wallet = multisigService.getWallet(walletId);
-  res.json({ success: true, data: wallet });
+  res.json({ success: true, data: wallet }));
 }));
 
 /**
  * POST /api/multisig/propose
  * Propose a new multisig transaction
+ * Body: { walletId, txData, proposer, nonce, timestamp, signature }
  */
 router.post('/propose', handleErrors(async (req, res) => {
-  const { walletId, txData, proposer } = req.body;
+  const { walletId, txData, proposer, nonce, timestamp, signature } = req.body;
   
   if (!walletId || !txData || !proposer) {
     return res.status(400).json({
@@ -43,16 +44,19 @@ router.post('/propose', handleErrors(async (req, res) => {
     });
   }
 
-  const txId = await multisigService.proposeTransaction(walletId, txData, proposer);
+  // Replay protection fields are optional for backward compatibility
+  // but recommended for production use
+  const txId = await multisigService.proposeTransaction(walletId, txData, proposer, nonce, timestamp, signature);
   res.json({ success: true, data: { txId } });
 }));
 
 /**
  * POST /api/multisig/sign
  * Collect a signature for a transaction
+ * Body: { txId, owner, signature, nonce, timestamp, signSignature }
  */
 router.post('/sign', handleErrors(async (req, res) => {
-  const { txId, owner, signature } = req.body;
+  const { txId, owner, signature, nonce, timestamp, signSignature } = req.body;
 
   if (!txId || !owner || !signature) {
     return res.status(400).json({
@@ -61,16 +65,17 @@ router.post('/sign', handleErrors(async (req, res) => {
     });
   }
 
-  const result = await multisigService.collectSignature(txId, owner, signature);
-  res.json({ success: true, data: result });
+  const result = await multisigService.collectSignature(txId, owner, signature, nonce, timestamp, signSignature);
+  res.json({ success: true, data: result }));
 }));
 
 /**
  * POST /api/multisig/execute
  * Execute a transaction that has reached threshold
+ * Body: { txId, executor, nonce, timestamp, signature }
  */
 router.post('/execute', handleErrors(async (req, res) => {
-  const { txId } = req.body;
+  const { txId, executor, nonce, timestamp, signature } = req.body;
 
   if (!txId) {
     return res.status(400).json({
@@ -79,8 +84,8 @@ router.post('/execute', handleErrors(async (req, res) => {
     });
   }
 
-  const result = await multisigService.processTransaction(txId);
-  res.json({ success: true, data: result });
+  const result = await multisigService.processTransaction(txId, executor, nonce, timestamp, signature);
+  res.json({ success: true, data: result }));
 }));
 
 /**
@@ -90,7 +95,7 @@ router.post('/execute', handleErrors(async (req, res) => {
 router.get('/status/:txId', handleErrors(async (req, res) => {
   const { txId } = req.params;
   const status = multisigService.getTransactionStatus(txId);
-  res.json({ success: true, data: status });
+  res.json({ success: true, data: status }));
 }));
 
 module.exports = router;
