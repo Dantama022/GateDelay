@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { MarketListSkeleton } from "./components/ui/Skeleton";
 import QuickTradeWidget from "../components/trade/QuickTradeWidget";
+import { formatOdds, formatVolume } from "@/lib/formatters";
 
 // Replace with a real API call (e.g. fetch /api/markets) once the backend
 // market-list endpoint is available.
@@ -50,15 +51,15 @@ export default function Home() {
                   <div>
                     <p className="font-medium text-sm" style={{ color: "var(--foreground)" }}>{m.title}</p>
                     <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
-                      Vol: ${m.volume.toLocaleString()}
+                      Vol: {formatVolume(m.volume)}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold" style={{ color: "#22c55e" }}>
-                      YES {(m.yesPrice * 100).toFixed(0)}¢
+                      YES {formatOdds(m.yesPrice)}
                     </p>
                     <p className="text-xs" style={{ color: "#ef4444" }}>
-                      NO {((1 - m.yesPrice) * 100).toFixed(0)}¢
+                      NO {formatOdds(1 - m.yesPrice)}
                     </p>
                   </div>
                 </Link>

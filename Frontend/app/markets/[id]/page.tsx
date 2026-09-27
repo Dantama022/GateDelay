@@ -16,6 +16,8 @@ import EventTimeline from "../../../components/market/EventTimeline";
 import { useToast } from "@/hooks/useToast";
 import { truncateTxHash, explorerTxUrl } from "@/lib/txUtils";
 import StalePriceWarning from "@/components/market/StalePriceWarning";
+import { formatCurrency, formatLiquidity, formatOdds, formatTokenAmount, formatVolume } from "@/lib/formatters";
+import { getMarketOutcomeLabel } from "@/lib/labels";
 
 // ── ABI (only the buy function) ──────────────────────────────────────────────
 const MARKET_MAKER_ABI = [
@@ -75,7 +77,7 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
 
   const amountValue = parseFloat(amount) || 0;
   const price = side === "YES" ? market.yesPrice : market.noPrice;
-  const shares = amountValue > 0 ? (amountValue / price).toFixed(2) : "—";
+  const shares = amountValue > 0 && price > 0 ? formatTokenAmount(amountValue / price) : "N/A";
   const isTradeValid = amountValue > 0 && market.status === "open";
 
   // Monitor transaction states
@@ -88,12 +90,12 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
       setProgressStatus("confirming");
     } else if (isSuccess) {
       setProgressStatus("success");
-      const msg = `Confirmed ${side} trade for ${amountValue.toFixed(2)} USDC at ${price.toFixed(2)} USDC per share.`;
+      const msg = `Confirmed ${getMarketOutcomeLabel(side)} trade for ${formatTokenAmount(amountValue, "USDC")} at ${formatCurrency(price)} per share.`;
       setConfirmationMessage(msg);
       toastSuccess(
-        `${side} trade confirmed`,
+        `${getMarketOutcomeLabel(side)} trade confirmed`,
         txHash
-          ? `${amountValue.toFixed(2)} USDC · ${truncateTxHash(txHash)}`
+          ? `${formatTokenAmount(amountValue, "USDC")} - ${truncateTxHash(txHash)}`
           : msg,
         txHash
           ? {
@@ -173,9 +175,9 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
       <Suspense fallback={<StatsSkeleton count={4} />}>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "YES Price", value: `${(market.yesPrice * 100).toFixed(0)}¢` },
-            { label: "Volume", value: `$${market.volume.toLocaleString()}` },
-            { label: "Liquidity", value: `$${market.liquidity.toLocaleString()}` },
+            { label: "YES Price", value: formatOdds(market.yesPrice) },
+            { label: "Volume", value: formatVolume(market.volume) },
+            { label: "Liquidity", value: formatLiquidity(market.liquidity) },
             { label: "Participants", value: market.participants },
           ].map((s) => (
             <div
@@ -261,7 +263,7 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
             />
           </div>
           <div className="flex justify-between text-xs" style={{ color: "var(--muted)" }}>
-            <span>Price per share</span><span>{price.toFixed(2)} USDC</span>
+            <span>Price per share</span><span>{formatTokenAmount(price, "USDC")}</span>
           </div>
           <div className="flex justify-between text-xs" style={{ color: "var(--muted)" }}>
             <span>Estimated shares</span><span>{shares}</span>
@@ -285,8 +287,8 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
               <span>Est. gas fee</span>
               <span>
                 {gasEstimate.feeUsd > 0
-                  ? `≈ $${gasEstimate.feeUsd < 0.01 ? "<0.01" : gasEstimate.feeUsd.toFixed(3)}`
-                  : `${parseFloat(gasEstimate.feeEth).toFixed(6)} MNT`}
+                  ? formatCurrency(gasEstimate.feeUsd < 0.01 ? 0.01 : gasEstimate.feeUsd)
+                  : formatTokenAmount(parseFloat(gasEstimate.feeEth), "MNT")}
               </span>
             </div>
           )}
@@ -296,7 +298,7 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
             className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-40"
             style={{ background: side === "YES" ? "#22c55e" : "#ef4444" }}
           >
-            Buy {side}
+            Buy {getMarketOutcomeLabel(side)}
           </button>
         </div>
 
@@ -326,8 +328,8 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
                       {t.side}
                     </span>
                   </td>
-                  <td className="text-right">${t.amount}</td>
-                  <td className="text-right">{t.price.toFixed(2)}</td>
+                  <td className="text-right">{formatCurrency(t.amount)}</td>
+                  <td className="text-right">{formatCurrency(t.price)}</td>
                   <td className="text-right" style={{ color: "var(--muted)" }}>{t.time}</td>
                 </tr>
               ))}
