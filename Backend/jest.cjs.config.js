@@ -18,6 +18,11 @@ module.exports = {
     '<rootDir>/test/disputeModel.test.js',
     '<rootDir>/test/multisig.test.js',
     '<rootDir>/test/multisig.routes.test.js',
+    '<rootDir>/test/circuitBreaker.test.js',
+    '<rootDir>/test/bridge.test.js',
+    '<rootDir>/test/tradeEngine.test.js',
+    '<rootDir>/test/staleOracleData.test.js',
+    '<rootDir>/test/marketMigrationValidation.test.js',
   ],
   clearMocks: true,
   // mongoose registers internal handles as soon as it is required, even without
