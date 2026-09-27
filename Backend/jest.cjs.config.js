@@ -15,6 +15,7 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: [
     '<rootDir>/test/tradeValidation.test.js',
+    '<rootDir>/test/staleOracleData.test.js',
     '<rootDir>/test/disputeModel.test.js',
     '<rootDir>/test/multisig.test.js',
     '<rootDir>/test/multisig.routes.test.js',
