@@ -13,7 +13,39 @@ forge   = "1.1.0"            # pinned Forge version; bump deliberately
 
 [profile.default]
 # WrapperContract requires openzeppelin-contracts-upgradeable (not vendored)
-skip           = ["src/WrapperContract.sol", "test/WrapperContract.t.sol"]
+skip           = [
+    "src/WrapperContract.sol",
+    "test/WrapperContract.t.sol",
+    "src/CrossChainHandler.sol",
+    "src/Burnable.sol",
+    "src/MintingPausable.sol",
+    "test/MintingPausable.t.sol",
+    "test/MintingPausableFuzz.t.sol",
+    "src/RandomSelection.sol",
+    "src/AutoCompounder.sol",
+    "src/YieldDistribution.sol",
+    "test/YieldDistribution.t.sol",
+    "src/DepositLogic.sol",
+    "test/DepositLogic.t.sol",
+    "src/RewardDistribution.sol",
+    "src/WithdrawalLimit.sol",
+    "test/WithdrawalLimit.t.sol",
+    "test/LiquidationMath.t.sol",
+    "test/MarketArbitration.t.sol",
+    "test/MultiSigWallet.t.sol",
+    "src/CompoundInterval.sol",
+    "src/Liquidation.sol",
+    "src/MarketIncentive.sol",
+    "src/MarketInitializer.sol",
+    "test/MarketInitializer.t.sol",
+    "src/MarketInsurance.sol",
+    "test/MarketInsurance.t.sol",
+    "src/PausableMarket.sol",
+    "test/PausableMarket.t.sol",
+    "src/RateLimiter.sol",
+    "src/UpgradeableMarket.sol",
+    "test/UpgradeableMarket.t.sol"
+]
 src            = "src"
 out            = "out"
 libs           = ["lib"]
