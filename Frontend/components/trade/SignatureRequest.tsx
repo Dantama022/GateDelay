@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useSignTypedData, useAccount } from "wagmi";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, XCircle, Loader2, FileSignature, AlertCircle, ExternalLink } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,6 +60,9 @@ export default function SignatureRequest({
     const [isOpen, setIsOpen] = useState(autoOpen);
 
     const { signTypedData, isPending: isSigning, error: signError, data: signature, reset: resetSign } = useSignTypedData();
+
+    const panelRef = useRef<HTMLDivElement>(null);
+    useFocusTrap(panelRef, isOpen);
 
     useEffect(() => {
         if (signature) {
@@ -125,8 +129,18 @@ export default function SignatureRequest({
     const handleClose = useCallback(() => {
         setIsOpen(false);
         setStatus("idle");
-        resetSign();
-    }, [resetSign]);
+    const isBusy = status === "signing" || status === "pending";
+    const isCompleted = status === "success" || status === "rejected" || status === "error";
+
+    // Escape to close (only when not busy)
+    useEffect(() => {
+        if (!isOpen) return;
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === "Escape" && !isBusy) { e.stopPropagation(); handleClose(); }
+        };
+        document.addEventListener("keydown", handler, true);
+        return () => document.removeEventListener("keydown", handler, true);
+    }, [isOpen, isBusy, handleClose]);
 
     if (!isOpen) {
         return (
@@ -145,8 +159,6 @@ export default function SignatureRequest({
         );
     }
 
-    const isBusy = status === "signing" || status === "pending";
-    const isCompleted = status === "success" || status === "rejected" || status === "error";
     const timeRemaining = Math.max(0, request.deadline - Date.now() / 1000);
 
     return (
@@ -164,6 +176,7 @@ export default function SignatureRequest({
                     aria-hidden="true"
                 />
                 <motion.div
+                    ref={panelRef}
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="signature-request-title"
