@@ -24,6 +24,7 @@ module.exports = {
     '<rootDir>/test/tradeEngine.test.js',
     '<rootDir>/test/staleOracleData.test.js',
     '<rootDir>/test/marketMigrationValidation.test.js',
+    '<rootDir>/test/gracefulShutdown.test.js',
   ],
   clearMocks: true,
   // mongoose registers internal handles as soon as it is required, even without

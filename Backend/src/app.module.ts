@@ -48,6 +48,8 @@ import { NftModule } from './nft/nft.module';
 import { BalanceModule } from './balance/balance.module';
 import { HealthModule } from './health/health.module';
 
+import { GracefulShutdownService } from './common/graceful-shutdown.service';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -117,6 +119,6 @@ import { HealthModule } from './health/health.module';
     HealthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, GracefulShutdownService],
 })
 export class AppModule {}
