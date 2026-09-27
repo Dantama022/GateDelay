@@ -456,6 +456,15 @@ function updateConfig(newConfig) {
   };
 }
 
+function closeRedis() {
+  if (redisClient) {
+    try {
+      redisClient.disconnect();
+    } catch (e) {}
+    redisClient = null;
+  }
+}
+
 module.exports = {
   getBreakerState,
   recordFailure,
@@ -471,6 +480,7 @@ module.exports = {
   isolateService,
   getActivationHistory,
   updateConfig,
+  closeRedis,
   BREAKER_STATE,
   BREAKER_CONFIG,
 };

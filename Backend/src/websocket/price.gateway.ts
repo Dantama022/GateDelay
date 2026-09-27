@@ -63,6 +63,26 @@ export class PriceGateway
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
     }
+    this.closeAllClients('Server shutting down');
+  }
+
+  public closeAllClients(reason = 'Server shutting down'): void {
+    if (!this.server?.sockets) {
+      return;
+    }
+    this.logger.log(`Closing active price gateway clients: ${reason}`);
+    this.server.sockets.forEach((socket) => {
+      try {
+        socket.emit('shutdown', { message: reason, timestamp: Date.now() });
+        socket.disconnect(true);
+      } catch (err) {
+        this.logger.warn(
+          `Failed to disconnect socket ${socket.id}: ${(err as Error).message}`,
+        );
+      }
+    });
+    this.subscriptions.clear();
+    this.clientConnections.clear();
   }
 
   async handleConnection(client: Socket) {

@@ -137,18 +137,45 @@ withJobContext('upgradeManager.start', {}, ({ requestId }) => {
 app.use(expressNotFoundHandler);
 app.use(expressErrorHandler);
 
-app.listen(PORT, () => {
+const gracefulShutdownManager = require('./services/gracefulShutdown');
+const mongoose = require('mongoose');
+
+const server = app.listen(PORT, () => {
   log('info', 'GateDelay legacy Express backend running', {
     service: 'gatedelay-backend-express',
     port: PORT,
   });
 });
 
-// Boot the standalone heartbeat server (default HEARTBEAT_PORT=4001) in the
-// same process so MarketFactory events stay wired into the heartbeat system
-// when running the legacy Express entrypoint.
+// Phase 1: Ingress
+gracefulShutdownManager.registerIngress('Express HTTP Server', () =>
+  new Promise((resolve) => {
+    server.close((err) => {
+      if (err) console.warn('[server] Express HTTP server close warning:', err.message);
+      resolve();
+    });
+  }),
+);
+
+// Phase 2: Workers
+gracefulShutdownManager.registerWorker('UpgradeManager', () => {
+  upgradeManager.stop();
+});
+
 try {
-  const { startHeartbeatServer } = require('../Backend/heartbeatServer');
+  const { stopSyncWorker } = require('./workers/syncWorker');
+  if (typeof stopSyncWorker === 'function') {
+    gracefulShutdownManager.registerWorker('SyncWorker', async () => {
+      await stopSyncWorker();
+    });
+  }
+} catch (err) {}
+
+// Phase 3: WebSockets & Realtime Gateways
+let stopHeartbeatServerFn = null;
+try {
+  const { startHeartbeatServer, stopHeartbeatServer } = require('./heartbeatServer');
+  stopHeartbeatServerFn = stopHeartbeatServer;
   if (typeof startHeartbeatServer === 'function') {
     startHeartbeatServer().catch((err) => {
       console.warn('[server] heartbeat boot failed:', err.message);
@@ -156,6 +183,32 @@ try {
   }
 } catch (err) {
   console.warn('[server] heartbeat server unavailable:', err.message);
+}
+
+if (stopHeartbeatServerFn) {
+  gracefulShutdownManager.registerWebSocket('HeartbeatServer Teardown', async () => {
+    await stopHeartbeatServerFn();
+  });
+}
+
+// Phase 4: Database & Cache Pools
+gracefulShutdownManager.registerDatabase('Mongoose DB Connection', async () => {
+  if (mongoose.connection && mongoose.connection.readyState !== 0) {
+    await mongoose.connection.close();
+  }
+});
+
+try {
+  const { closeRedis } = require('./services/breakerService');
+  if (typeof closeRedis === 'function') {
+    gracefulShutdownManager.registerDatabase('BreakerService Redis Client', () => {
+      closeRedis();
+    });
+  }
+} catch (err) {}
+
+if (require.main === module && process.env.NODE_ENV !== 'test') {
+  gracefulShutdownManager.attachSignalListeners();
 }
 
 module.exports = app;
