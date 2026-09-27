@@ -105,4 +105,59 @@ contract BridgeConnectorTest is Test {
 
         assertEq(uint256(connector.connectorStatus()), uint256(BridgeConnector.ConnectorStatus.Paused));
     }
+
+    // -------------------------------------------------------------------------
+    // #967 – Unsupported chain IDs and malformed payloads
+    // -------------------------------------------------------------------------
+
+    function test_sendMessage_revertsForUnregisteredChain() public {
+        uint16 unknownChain = 999;
+
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(BridgeConnector.BridgeConnector__ProtocolNotRegistered.selector, unknownChain)
+        );
+        connector.sendMessage(unknownChain, bytes("payload"), bytes(""));
+
+        // No partial state: message counter and endpoint are untouched
+        assertEq(connector.outboundMessageCount(), 0);
+        assertEq(endpoint.sendCount(), 0);
+    }
+
+    function test_sendMessage_revertsForEmptyPayload() public {
+        vm.prank(alice);
+        vm.expectRevert(BridgeConnector.BridgeConnector__EmptyPayload.selector);
+        connector.sendMessage(DESTINATION_CHAIN, bytes(""), bytes(""));
+
+        assertEq(connector.outboundMessageCount(), 0);
+        assertEq(endpoint.sendCount(), 0);
+    }
+
+    function test_sendMessage_revertsAfterProtocolRemoved() public {
+        vm.prank(owner);
+        connector.removeProtocol(DESTINATION_CHAIN);
+
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(BridgeConnector.BridgeConnector__ProtocolNotRegistered.selector, DESTINATION_CHAIN)
+        );
+        connector.sendMessage(DESTINATION_CHAIN, bytes("payload"), bytes(""));
+
+        assertEq(connector.outboundMessageCount(), 0);
+    }
+
+    function test_malformedPayload_doesNotIncrementCounter() public {
+        // A valid send succeeds and increments the counter
+        vm.prank(alice);
+        connector.sendMessage(DESTINATION_CHAIN, bytes("valid"), bytes(""));
+        assertEq(connector.outboundMessageCount(), 1);
+
+        // An empty payload must revert and must NOT increment the counter
+        vm.prank(alice);
+        vm.expectRevert(BridgeConnector.BridgeConnector__EmptyPayload.selector);
+        connector.sendMessage(DESTINATION_CHAIN, bytes(""), bytes(""));
+
+        assertEq(connector.outboundMessageCount(), 1);
+        assertEq(endpoint.sendCount(), 1);
+    }
 }
