@@ -4,6 +4,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpErrorEnvelopeFilter } from './common/http-error-envelope.filter';
 import { expressCorrelationMiddleware, log } from '../utils/correlation';
+import marketMigrationGuardModule from '../middleware/marketMigrationGuard';
+import marketMigrationValidatorModule from '../services/marketMigrationValidator';
 
 // API protection middlewares (Backend/API_PROTECTION_README.md)
 // CommonJS modules under Backend/middleware — required to boot under both NestJS and legacy Express
@@ -20,10 +22,8 @@ const { backwardCompatMiddleware } = require('../middleware/backwardCompat');
 const rateLimitConfig = require('../config/rateLimits');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { assertValidRateLimits } = require('../config/rateLimitsValidation');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { assertValidMarketMigrations } = require('../services/marketMigrationValidator');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { marketMigrationGuard } = require('../middleware/marketMigrationGuard');
+const { assertValidMarketMigrations } = marketMigrationValidatorModule;
+const { marketMigrationGuard } = marketMigrationGuardModule;
 
 async function bootstrap() {
   // Fail the boot on an unsafe rate-limit configuration before the app starts
