@@ -37,6 +37,8 @@ export interface UseIPFSReturn {
   pin: (hash: string, name?: string) => Promise<void>;
   /** Get gateway URL for a hash */
   getGatewayUrl: (hash: string) => string;
+  /** Dismiss the current error without clearing stored hash state */
+  clearError: () => void;
   /** Reset state */
   reset: () => void;
 }
@@ -171,6 +173,11 @@ export function useIPFS(initialHash?: string): UseIPFSReturn {
     return `${DEFAULT_GATEWAY}${targetHash}`;
   }, []);
 
+  const clearError = useCallback(() => {
+    setError(null);
+    setStatus((current) => (current === "error" ? "idle" : current));
+  }, []);
+
   const reset = useCallback(() => {
     setStatus("idle");
     setHash(null);
@@ -188,6 +195,7 @@ export function useIPFS(initialHash?: string): UseIPFSReturn {
     retrieve,
     pin,
     getGatewayUrl,
+    clearError,
     reset,
   };
 }
