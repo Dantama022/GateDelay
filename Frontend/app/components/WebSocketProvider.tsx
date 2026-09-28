@@ -84,7 +84,7 @@ export function WebSocketProvider({
         });
 
         return unsubscribe;
-    }, [websocket]);
+    }, [websocket.on]);
 
     // ─── Handle Market Data ───────────────────────────────────────────────────
 
@@ -95,7 +95,7 @@ export function WebSocketProvider({
         });
 
         return unsubscribe;
-    }, [websocket]);
+    }, [websocket.on]);
 
     // ─── Handle Polling Fallback ──────────────────────────────────────────────
 
@@ -132,7 +132,7 @@ export function WebSocketProvider({
         });
 
         return unsubscribe;
-    }, [websocket, backendUrl, authToken]);
+    }, [websocket.on, backendUrl, authToken]);
 
     // ─── Connection Status Notifications ──────────────────────────────────────
 

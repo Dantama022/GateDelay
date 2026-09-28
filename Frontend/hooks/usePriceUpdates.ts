@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useWebSocketContext } from "@/app/components/WebSocketProvider";
 import { PriceUpdate } from "./useWebSocket";
 
@@ -30,6 +30,8 @@ export interface UsePriceUpdatesOptions {
 export function usePriceUpdates(options: UsePriceUpdatesOptions) {
     const { marketIds, onUpdate, autoSubscribe = true } = options;
     const websocket = useWebSocketContext();
+    const marketIdsKey = JSON.stringify(marketIds);
+    const stableMarketIds = useMemo<string[]>(() => JSON.parse(marketIdsKey), [marketIdsKey]);
 
     const [priceData, setPriceData] = useState<Map<string, PriceData>>(new Map());
     const [isLoading, setIsLoading] = useState(true);
@@ -37,27 +39,27 @@ export function usePriceUpdates(options: UsePriceUpdatesOptions) {
     // ─── Subscribe/Unsubscribe ────────────────────────────────────────────────
 
     useEffect(() => {
-        if (!autoSubscribe || marketIds.length === 0) {
+        if (!autoSubscribe || stableMarketIds.length === 0) {
             setIsLoading(false);
             return;
         }
 
         // Subscribe to markets
-        websocket.subscribe(marketIds);
+        websocket.subscribe(stableMarketIds);
         setIsLoading(false);
 
         // Unsubscribe on cleanup
         return () => {
-            websocket.unsubscribe(marketIds);
+            websocket.unsubscribe(stableMarketIds);
         };
-    }, [marketIds, autoSubscribe, websocket]);
+    }, [stableMarketIds, autoSubscribe, websocket.subscribe, websocket.unsubscribe]);
 
     // ─── Update Price Data ────────────────────────────────────────────────────
 
     useEffect(() => {
         const updatedPrices = new Map<string, PriceData>();
 
-        marketIds.forEach((marketId) => {
+        stableMarketIds.forEach((marketId) => {
             const priceUpdate = websocket.getPrice(marketId);
             const existingData = priceData.get(marketId);
 
@@ -85,7 +87,7 @@ export function usePriceUpdates(options: UsePriceUpdatesOptions) {
             setPriceData(updatedPrices);
             onUpdate?.(updatedPrices);
         }
-    }, [websocket.prices, marketIds, onUpdate]);
+    }, [websocket.prices, stableMarketIds, onUpdate]);
 
     // ─── Helper Functions ─────────────────────────────────────────────────────
 
