@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ThemeProvider } from "../components/ThemeProvider";
@@ -63,5 +63,63 @@ describe("/settings first paint", () => {
       screen.getByRole("heading", { name: /^settings$/i, level: 1 }),
     ).toBeInTheDocument();
     expect(screen.getByText(/default slippage/i)).toBeInTheDocument();
+  });
+});
+
+describe("/settings notification preferences", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    settingsService.resetSettings();
+    mockMatchMedia();
+    localStorage.setItem("accessToken", "test-access-token");
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("loads preferences and saves event-category changes through the API", async () => {
+    const user = userEvent.setup();
+    const initialPreferences = {
+      email: true,
+      push: false,
+      inApp: true,
+      optedOutTypes: ["dispute_opened"],
+    };
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        return new Response(JSON.stringify({
+          ...initialPreferences,
+          optedOutTypes: ["dispute_opened", "trade_confirmation", "trade_filled"],
+        }), { status: 200 });
+      }
+      return new Response(JSON.stringify(initialPreferences), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderSettings();
+    await user.click(screen.getByRole("button", { name: /notifications/i }));
+
+    const tradeSwitch = await screen.findByRole("switch", { name: "Trade notifications" });
+    expect(tradeSwitch).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("switch", { name: "Dispute notifications" })).toHaveAttribute("aria-checked", "false");
+
+    await user.click(tradeSwitch);
+
+    expect(await screen.findByText("Your choices were updated.")).toBeInTheDocument();
+    const patchCall = fetchMock.mock.calls.find(([, init]) => init?.method === "PATCH");
+    expect(patchCall?.[0]).toBe("http://localhost:3000/api/notifications/preferences");
+    expect(patchCall?.[1]?.headers).toMatchObject({ Authorization: "Bearer test-access-token" });
+    expect(JSON.parse(String(patchCall?.[1]?.body))).toEqual({
+      optedOutTypes: ["dispute_opened", "trade_confirmation", "trade_filled"],
+    });
+  });
+
+  it("shows a sign-in message when there is no backend auth token", async () => {
+    localStorage.removeItem("accessToken");
+    renderSettings();
+    await userEvent.setup().click(screen.getByRole("button", { name: /notifications/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Sign in to load and update notification preferences.");
   });
 });

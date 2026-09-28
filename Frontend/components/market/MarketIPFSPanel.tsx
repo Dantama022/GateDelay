@@ -7,6 +7,8 @@ import {
   Link2,
   Pin,
   Loader2,
+  RotateCw,
+  X,
   CheckCircle2,
   AlertCircle,
   ExternalLink,
@@ -28,25 +30,51 @@ export default function MarketIPFSPanel({
   onUploadComplete,
 }: MarketIPFSPanelProps) {
   const toast = useToast();
-  const { status, hash, gatewayUrl, storageStatus, error, uploadJSON, retrieve, pin } =
+  const { status, hash, gatewayUrl, storageStatus, error, uploadJSON, retrieve, pin, clearError } =
     useIPFS();
   const [retrieveHash, setRetrieveHash] = useState("");
   const [retrievedData, setRetrievedData] = useState<unknown>(null);
+  const [failedUpload, setFailedUpload] = useState<{
+    data: unknown;
+    metadata?: { name?: string };
+  } | null>(null);
+  const [uploadFailure, setUploadFailure] = useState<string | null>(null);
 
-  const handleUpload = async () => {
-    const data = marketData ?? {
-      title: "Sample Market",
-      description: "Market metadata stored on IPFS",
-      timestamp: new Date().toISOString(),
-    };
-
+  const attemptUpload = async (payload: { data: unknown; metadata?: { name?: string } }) => {
+    setFailedUpload(payload);
+    setUploadFailure(null);
     try {
-      const result = await uploadJSON(data, { name: "GateDelay-Market-Metadata" });
+      const result = await uploadJSON(payload.data, payload.metadata);
+      setFailedUpload(null);
       toast.success("Stored on IPFS", `Hash: ${result.hash.slice(0, 16)}…`);
       onUploadComplete?.(result.hash, result.url);
-    } catch {
-      toast.error("Upload Failed", error || "Could not store on IPFS");
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Could not store on IPFS";
+      setUploadFailure(message);
+      toast.error("Upload Failed", message);
     }
+  };
+
+  const handleUpload = () => {
+    const payload = {
+      data: marketData ?? {
+        title: "Sample Market",
+        description: "Market metadata stored on IPFS",
+        timestamp: new Date().toISOString(),
+      },
+      metadata: { name: "GateDelay-Market-Metadata" },
+    };
+    void attemptUpload(payload);
+  };
+
+  const handleRetryUpload = () => {
+    if (failedUpload) void attemptUpload(failedUpload);
+  };
+
+  const handleCancelUpload = () => {
+    setFailedUpload(null);
+    setUploadFailure(null);
+    clearError();
   };
 
   const handleRetrieve = async () => {
@@ -108,7 +136,7 @@ export default function MarketIPFSPanel({
       <button
         type="button"
         onClick={handleUpload}
-        disabled={status === "uploading"}
+        disabled={status === "uploading" || failedUpload !== null}
         className="w-full py-2.5 rounded-lg text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
       >
         {status === "uploading" ? (
@@ -190,10 +218,34 @@ export default function MarketIPFSPanel({
         )}
       </div>
 
-      {error && (
-        <div className="flex items-center gap-2 text-xs p-2 rounded-lg" style={{ background: "rgba(239, 68, 68, 0.08)", color: "#ef4444" }}>
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          {error}
+      {(uploadFailure || error) && (
+        <div role="alert" className="rounded-lg p-3 text-xs" style={{ background: "rgba(239, 68, 68, 0.08)", color: "#ef4444" }}>
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{uploadFailure || error}</span>
+          </div>
+          {uploadFailure && failedUpload && (
+            <div className="mt-3 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleCancelUpload}
+                className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 font-medium transition-colors hover:opacity-80"
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              >
+                <X className="h-3.5 w-3.5" />
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRetryUpload}
+                disabled={status === "uploading"}
+                className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2.5 py-1.5 font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                <RotateCw className="h-3.5 w-3.5" />
+                Retry upload
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
