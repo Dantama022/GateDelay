@@ -5,7 +5,6 @@ permissions:
 
 on:
   push:
-    branches: [main, master]
     paths:
       - 'Contracts/**'
       - 'test/**'
@@ -44,6 +43,11 @@ jobs:
       - name: Show Forge version
         run: forge --version
 
+      - name: Build full Contracts project
+        run: forge build --sizes
+
+      - name: Run full Contracts test suite
+        run: forge test -vvv
       - name: Run isolated LMSR invariant suite
         run: bash ./verify_lmsr_invariants.sh
 
@@ -96,6 +100,12 @@ jobs:
 
       - name: Show Forge version
         run: forge --version
+
+      - name: Build full root project
+        run: forge build --sizes
+
+      - name: Run full root test suite
+        run: forge test -vvv
 
       - name: Build CircuitBreaker (root profile)
         run: forge build --contracts Contracts/src/CircuitBreaker.sol --skip test
