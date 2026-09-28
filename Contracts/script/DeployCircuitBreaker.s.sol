@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "../src/CircuitBreaker.sol";
-import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
 /// @notice Deploy CircuitBreaker, optionally delegate roles and tune configuration
 ///         parameters, then write a JSON artifact.
