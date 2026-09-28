@@ -236,7 +236,7 @@ export default function TradingChallenge({
 
   return (
     <div
-      className="rounded-2xl p-6 space-y-5"
+      className="w-full min-w-0 space-y-5 rounded-2xl p-4 sm:p-6"
       style={{ background: "var(--card)", border: "1px solid var(--border)" }}
     >
       {/* Header */}
@@ -273,7 +273,7 @@ export default function TradingChallenge({
             <motion.div
               key={challenge.id}
               layout
-              className="rounded-xl p-4 space-y-3"
+              className="min-w-0 space-y-3 rounded-xl p-3 sm:p-4"
               style={{ background: "var(--background)", border: "1px solid var(--border)" }}
             >
               {/* Challenge header row */}
@@ -338,20 +338,20 @@ export default function TradingChallenge({
                       transition={{ duration: 0.5 }}
                     />
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div className="text-center p-2 rounded-lg" style={{ background: "var(--card)" }}>
+                  <div className="grid min-w-0 grid-cols-1 gap-2 text-xs min-[360px]:grid-cols-3">
+                    <div className="min-w-0 break-words text-center rounded-lg p-2" style={{ background: "var(--card)" }}>
                       <p className="font-bold" style={{ color: "var(--foreground)" }}>
                         {progress.tradesCompleted}/{challenge.targetTrades}
                       </p>
                       <p style={{ color: "var(--muted)" }}>Trades</p>
                     </div>
-                    <div className="text-center p-2 rounded-lg" style={{ background: "var(--card)" }}>
+                    <div className="min-w-0 break-words text-center rounded-lg p-2" style={{ background: "var(--card)" }}>
                       <p className="font-bold" style={{ color: "var(--foreground)" }}>
                         ${progress.volumeTraded}
                       </p>
                       <p style={{ color: "var(--muted)" }}>Volume</p>
                     </div>
-                    <div className="text-center p-2 rounded-lg" style={{ background: "var(--card)" }}>
+                    <div className="min-w-0 break-words text-center rounded-lg p-2" style={{ background: "var(--card)" }}>
                       <p className="font-bold" style={{ color: "var(--foreground)" }}>
                         {(progress.winRate * 100).toFixed(0)}%
                       </p>
