@@ -19,7 +19,7 @@ contract VerdictExecutionTest is Test {
         verdictExec = new VerdictExecution(arbitrator);
 
         // Deploy a minimal PositionToken (factory set to zero for tests)
-        pt = new PositionToken(address(0))
+        pt = new PositionToken(address(this));
 
         // Deploy Resolution with `verdictExec` as admin so it can call settleDispute
         resolution = new Resolution(
@@ -71,5 +71,38 @@ contract VerdictExecutionTest is Test {
             uint256(status),
             uint256(VerdictExecution.ExecStatus.EXECUTED)
         );
+    }
+
+    // -------------------------------------------------------------------------
+    // #966 – Verdict execution lifecycle tests
+    // -------------------------------------------------------------------------
+
+    function test_verdictLifecycle_queryBeforeProcessingReturnsUnknown() public {
+        bytes32 vid = keccak256(abi.encodePacked("vid3"));
+
+        (, , , , VerdictExecution.ExecStatus status, ) = verdictExec.getExecution(vid);
+        assertEq(uint256(status), uint256(VerdictExecution.ExecStatus.UNKNOWN));
+    }
+
+    function test_verdictLifecycle_nonArbitratorBlocked() public {
+        bytes32 vid = keccak256(abi.encodePacked("vid4"));
+
+        vm.prank(address(0xDEAD));
+        vm.expectRevert(bytes("Unauthorized"));
+        verdictExec.processVerdict(vid, address(0x100), Resolution.Outcome.YES);
+    }
+
+    function test_verdictLifecycle_duplicateVerdictReverts() public {
+        bytes32 vid = keccak256(abi.encodePacked("vid5"));
+        address market = address(0x300);
+
+        // First processing: market is not disputed → recorded as FAILED (not UNKNOWN)
+        vm.prank(arbitrator);
+        verdictExec.processVerdict(vid, market, Resolution.Outcome.YES);
+
+        // Second processing of the same verdict id must revert
+        vm.prank(arbitrator);
+        vm.expectRevert(bytes("Already processed"));
+        verdictExec.processVerdict(vid, market, Resolution.Outcome.NO);
     }
 }

@@ -5,7 +5,6 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { envValidationSchema } from './config/env.validation';
-import { ApiVersionDeprecationMiddleware } from './common/middleware/api-version-deprecation.middleware';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -46,10 +45,22 @@ import { VerificationModule } from './verification/verification.module';
 import { MarketMetadataModule } from './market-metadata/market-metadata.module';
 import { EventNotificationModule } from './event-notifications/event-notification.module';
 import { BridgeModule } from './bridge/bridge.module';
+import { NftModule } from './nft/nft.module';
+import { BalanceModule } from './balance/balance.module';
+import { HealthModule } from './health/health.module';
+
+import { GracefulShutdownService } from './common/graceful-shutdown.service';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: envValidationSchema,
+      validationOptions: {
+        abortEarly: false,
+        allowUnknown: true,
+      },
+    }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     CacheModule.registerAsync({
@@ -111,9 +122,12 @@ import { BridgeModule } from './bridge/bridge.module';
     MarketMetadataModule,
     EventNotificationModule,
     BridgeModule,
+    NftModule,
+    BalanceModule,
+    HealthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, GracefulShutdownService],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
