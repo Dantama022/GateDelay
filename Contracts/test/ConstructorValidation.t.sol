@@ -66,18 +66,18 @@ contract ConstructorValidationTest is Test {
 
     function test_resolution_revertsOnZeroDisputeWindow() public {
         vm.expectRevert(Resolution.InvalidDisputeWindow.selector);
-        new Resolution(0, address(1), address(2), address(3));
+        new Resolution(0, address(1), address(2), address(3), address(4));
     }
 
     function test_resolution_revertsOnZeroDependencies() public {
         vm.expectRevert(Resolution.ZeroAddress.selector);
-        new Resolution(1 days, address(0), address(2), address(3));
+        new Resolution(1 days, address(0), address(2), address(3), address(4));
 
         vm.expectRevert(Resolution.ZeroAddress.selector);
-        new Resolution(1 days, address(1), address(0), address(3));
+        new Resolution(1 days, address(1), address(0), address(3), address(4));
 
         vm.expectRevert(Resolution.ZeroAddress.selector);
-        new Resolution(1 days, address(1), address(2), address(0));
+        new Resolution(1 days, address(1), address(2), address(0), address(4));
     }
 
     function test_marketSettlement_revertsOnZeroDependencies() public {

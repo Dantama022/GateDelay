@@ -15,7 +15,7 @@ function truncate(addr: string) {
 }
 
 export default function WalletButton() {
-  const { isConnected, address, isConnecting, disconnect } = useConnectKitBridge();
+  const { isAvailable, isConnected, address, isConnecting, disconnect } = useConnectKitBridge();
   const [modalOpen, setModalOpen] = useState(false);
   const { success, info } = useToast();
 
@@ -89,12 +89,13 @@ export default function WalletButton() {
     <>
       <button
         onClick={() => setModalOpen(true)}
-        aria-label="Connect wallet"
-        title="Connect wallet"
+        aria-label={isAvailable ? "Connect wallet" : "Wallet signing unavailable; open setup details"}
+        aria-haspopup="dialog"
+        title={isAvailable ? "Connect wallet" : "Signing unavailable: configure Particle credentials"}
         className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
         style={{ background: "#3b82f6" }}
       >
-        Connect Wallet
+        {isAvailable ? "Connect Wallet" : "Signing unavailable"}
       </button>
 
       <ConnectModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />

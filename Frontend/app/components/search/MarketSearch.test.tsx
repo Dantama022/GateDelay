@@ -94,9 +94,11 @@ function renderSearch(
   markets: Market[] = MARKETS,
   onSearch = vi.fn(),
   isLoading = false,
+  error: string | null = null,
+  onRetry?: () => void,
 ) {
   return render(
-    <MarketSearch markets={markets} onSearch={onSearch} isLoading={isLoading} />,
+    <MarketSearch markets={markets} onSearch={onSearch} isLoading={isLoading} error={error} onRetry={onRetry} />,
   );
 }
 
@@ -334,9 +336,9 @@ describe("empty results", () => {
     expect(screen.getByText(/no markets found/i)).toBeInTheDocument();
   });
 
-  it("shows 'No markets found' when passing an empty markets array", () => {
+  it("shows an unavailable state when the source has no markets", () => {
     renderSearch([]);
-    expect(screen.getByText(/no markets found/i)).toBeInTheDocument();
+    expect(screen.getByText(/no markets are available/i)).toBeInTheDocument();
     expect(screen.getByText(/0 results/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /browse markets/i })).toHaveAttribute("href", "/dashboard");
     expect(screen.getByRole("link", { name: /view favorites/i })).toHaveAttribute("href", "/favorites");
@@ -352,9 +354,24 @@ describe("empty results", () => {
     expect(screen.getByText("Will AA123 arrive on time?")).toBeInTheDocument();
   });
 
-  it("shows 'Searching…' label while isLoading is true", () => {
+  it("shows loading feedback instead of empty results while isLoading is true", () => {
     renderSearch(MARKETS, vi.fn(), true);
     expect(screen.getByText(/searching…/i)).toBeInTheDocument();
+    expect(screen.getByTestId("market-list-loading")).toBeInTheDocument();
+    expect(screen.queryByTestId("market-list-empty")).not.toBeInTheDocument();
+    expect(screen.queryByText("Will AA123 arrive on time?")).not.toBeInTheDocument();
+  });
+
+  it("shows request failure and retry instead of empty results", async () => {
+    const onRetry = vi.fn();
+    const user = userEvent.setup();
+    renderSearch([], vi.fn(), false, "The server could not be reached.", onRetry);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/unable to load markets/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/server could not be reached/i);
+    expect(screen.queryByTestId("market-list-empty")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /retry/i }));
+    expect(onRetry).toHaveBeenCalledOnce();
   });
 });
 

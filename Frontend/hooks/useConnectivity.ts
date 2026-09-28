@@ -1,6 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  CONNECTIVITY_PROBE_URL,
+  MAX_RECONNECT_ATTEMPTS,
+  NETWORK_FAILURE_THRESHOLD,
+  isConnectivityProbeUrl,
+  isNetworkFailureError,
+  isNetworkFailureStatus,
+  reconnectProgressPercent,
+  requestUrl,
+  type UnreachableReason,
+} from "../lib/connectivity";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,13 +42,30 @@ export interface ConnectivityState {
    */
   status: ConnectivityStatus;
   /**
-   * True when navigator.onLine is false.
+   * True when the browser is offline *or* the backend cannot be reached.
    * Always `false` during the `"loading"` phase so consumers can safely render
    * without a flash of offline UI on first paint.
    */
   isOffline: boolean;
+  /**
+   * True while the browser is online but the backend probe is failing and we
+   * are actively retrying `/api/ping`. Distinct from `isSyncing`, which is the
+   * offline-action queue drain.
+   */
+  isReconnecting: boolean;
+  /** Why connectivity is currently unavailable, or `null` when healthy. */
+  unreachableReason: UnreachableReason | null;
+  /** 1-based reconnect probe attempt, `0` when not reconnecting. */
+  reconnectAttempt: number;
+  /** 0–95 progress toward a successful probe (never 100 until restored). */
+  reconnectProgress: number;
   /** True while the sync pass is running */
   isSyncing: boolean;
+  /**
+   * Report a failed application request. Multiple callers collapse into one
+   * connectivity state — they do not create extra banners.
+   */
+  reportRequestFailure: () => void;
   /**
    * True during the initial SSR / hydration window before browser connectivity
    * APIs have been queried.  Use this to suppress connectivity-dependent UI
@@ -70,6 +98,7 @@ export interface ConnectivityState {
 
 const STORAGE_KEY = "gd_offline_queue";
 const MAX_ATTEMPTS = 5;
+const RECONNECT_INTERVAL_MS = 3_000;
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -144,7 +173,10 @@ export function useConnectivity(): ConnectivityState {
   // Default to `true` (optimistic) so SSR HTML matches the most common case.
   // The real navigator.onLine value is read inside useEffect below.
   const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [backendReachable, setBackendReachable] = useState(true);
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
+  const failureCountRef = useRef(0);
 
   // ── Queue ─────────────────────────────────────────────────────────────────
   // Start empty on both server and client; populated from localStorage inside
@@ -167,13 +199,61 @@ export function useConnectivity(): ConnectivityState {
   }, []);
 
   // ── Status derivation ──────────────────────────────────────────────────────
+  const markBackendUnreachable = useCallback(() => {
+    setBackendReachable(false);
+  }, []);
+
+  const reportRequestFailure = useCallback(() => {
+    failureCountRef.current += 1;
+    if (failureCountRef.current >= NETWORK_FAILURE_THRESHOLD) {
+      markBackendUnreachable();
+    }
+  }, [markBackendUnreachable]);
+
+  const probeBackend = useCallback(async (): Promise<boolean> => {
+    if (typeof window === "undefined" || !navigator.onLine) return false;
+    const cacheKey = `_nc=${Date.now()}`;
+    const url = `${CONNECTIVITY_PROBE_URL}?${cacheKey}`;
+    try {
+      const res = await fetch(url, {
+        method: "HEAD",
+        cache: "no-store",
+        credentials: "omit",
+      });
+      if (res.ok) {
+        failureCountRef.current = 0;
+        setBackendReachable(true);
+        setReconnectAttempt(0);
+        return true;
+      }
+      markBackendUnreachable();
+      return false;
+    } catch (error) {
+      if (isNetworkFailureError(error) || error instanceof Error) {
+        markBackendUnreachable();
+      }
+      return false;
+    }
+  }, [markBackendUnreachable]);
+
   const status: ConnectivityStatus = isLoading
     ? "loading"
     : isSyncing
     ? "syncing"
-    : isOnline
+    : isOnline && backendReachable
     ? "online"
     : "offline";
+
+  const isReconnecting =
+    !isLoading && isOnline && !backendReachable;
+
+  const unreachableReason: UnreachableReason | null = isLoading
+    ? null
+    : !isOnline
+    ? "browser"
+    : !backendReachable
+    ? "backend"
+    : null;
 
   // ── Queue helpers ──────────────────────────────────────────────────────────
 
@@ -252,6 +332,8 @@ export function useConnectivity(): ConnectivityState {
 
     const handleOnline = () => {
       setIsOnline(true);
+      // Browser connectivity is back; backend health is still unknown until probe.
+      void probeBackend();
       // Fire-and-forget sync – errors are swallowed inside syncNow
       syncNow();
     };
@@ -282,7 +364,67 @@ export function useConnectivity(): ConnectivityState {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, [syncNow]);
+  }, [syncNow, probeBackend]);
+
+  // ── Backend probe + reconnect loop ─────────────────────────────────────────
+  // Recovery is owned by this probe. A stray successful application request
+  // must not clear an unreachable state while the probe is still failing.
+
+  useEffect(() => {
+    if (typeof window === "undefined" || isLoading) return;
+    if (!isOnline) {
+      setReconnectAttempt(0);
+      return;
+    }
+
+    if (backendReachable) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const tick = async () => {
+      if (cancelled) return;
+      setReconnectAttempt((prev) =>
+        prev >= MAX_RECONNECT_ATTEMPTS ? 1 : prev + 1,
+      );
+      await probeBackend();
+    };
+
+    void tick();
+    const id = window.setInterval(tick, RECONNECT_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [isLoading, isOnline, backendReachable, probeBackend]);
+
+  // Collapse duplicate failed fetches into a single connectivity state.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const originalFetch = window.fetch.bind(window);
+
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input);
+      try {
+        const res = await originalFetch(input, init);
+        if (!isConnectivityProbeUrl(url) && isNetworkFailureStatus(res.status)) {
+          reportRequestFailure();
+        }
+        return res;
+      } catch (error) {
+        if (!isConnectivityProbeUrl(url) && isNetworkFailureError(error)) {
+          reportRequestFailure();
+        }
+        throw error;
+      }
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [reportRequestFailure]);
 
   // ── Handler registration ───────────────────────────────────────────────────
 
@@ -296,7 +438,13 @@ export function useConnectivity(): ConnectivityState {
   return {
     status,
     // isOffline is always false while loading to prevent flash of offline UI
-    isOffline: !isLoading && !isOnline,
+    isOffline: !isLoading && (!isOnline || !backendReachable),
+    isReconnecting,
+    unreachableReason,
+    reconnectAttempt: isReconnecting ? reconnectAttempt : 0,
+    reconnectProgress: isReconnecting
+      ? reconnectProgressPercent(reconnectAttempt)
+      : 0,
     isSyncing,
     isLoading,
     isReady: !isLoading,
@@ -307,5 +455,6 @@ export function useConnectivity(): ConnectivityState {
     dequeue,
     syncNow,
     registerSyncHandler,
+    reportRequestFailure,
   };
 }

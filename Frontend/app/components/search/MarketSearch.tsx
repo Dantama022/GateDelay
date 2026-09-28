@@ -18,7 +18,7 @@ export interface Market {
   createdAt?: string;
 }
 
-interface SearchFilters {
+export interface SearchFilters {
   query: string;
   category?: string;
   status?: string;
@@ -32,12 +32,16 @@ interface MarketSearchProps {
   markets: Market[];
   onSearch?: (filters: SearchFilters) => void;
   isLoading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 export default function MarketSearch({
   markets,
   onSearch,
   isLoading = false,
+  error = null,
+  onRetry,
 }: MarketSearchProps) {
   const [filters, setFilters] = useState<SearchFilters>({
     query: "",
@@ -495,20 +499,57 @@ export default function MarketSearch({
       )}
 
       {/* Results */}
-      <div className="space-y-2">
+      <div className="space-y-2" aria-busy={isLoading}>
         <div className="flex items-center justify-between">
-          <p className="text-sm" style={{ color: "var(--muted)" }}>
+          <p className="text-sm" role="status" aria-live="polite" style={{ color: "var(--muted)" }}>
             {isLoading ? "Searching…" : `${filteredMarkets.length} results`}
           </p>
         </div>
 
-        {filteredMarkets.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-2" data-testid="market-list-loading" aria-hidden="true">
+            {[0, 1, 2].map((item) => (
+              <div
+                key={item}
+                className="animate-pulse rounded-lg border p-4"
+                style={{ background: "var(--card)", borderColor: "var(--border)" }}
+              >
+                <div className="mb-2 h-4 w-2/3 rounded bg-zinc-300/60" />
+                <div className="h-3 w-full rounded bg-zinc-300/40" />
+                <div className="mt-2 h-3 w-1/3 rounded bg-zinc-300/40" />
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div
+            className="rounded-lg border p-6 text-center"
+            style={{ background: "var(--card)", borderColor: "var(--border)" }}
+            role="alert"
+            data-testid="market-list-error"
+          >
+            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+              Unable to load markets
+            </p>
+            <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>{error}</p>
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-4 rounded-lg px-3 py-2 text-sm font-medium text-white"
+                style={{ background: "#3b82f6" }}
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        ) : filteredMarkets.length === 0 ? (
           <div
             className="rounded-lg border p-8 text-center"
             style={{
               background: "var(--card)",
               borderColor: "var(--border)",
             }}
+            data-testid="market-list-empty"
           >
             <Search size={24} aria-hidden="true" className="mx-auto mb-3" style={{ color: "var(--muted)" }} />
             <h3 className="font-semibold" style={{ color: "var(--foreground)" }}>

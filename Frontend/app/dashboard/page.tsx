@@ -18,7 +18,7 @@ const STATS = [
 export default function DashboardPage() {
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6">
         {/* Page heading */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -43,11 +43,11 @@ export default function DashboardPage() {
           {STATS.map((s) => (
             <div
               key={s.label}
-              className="rounded-xl px-5 py-4"
+              className="min-w-0 rounded-xl px-4 py-3 sm:px-5 sm:py-4"
               style={{ background: "var(--card)", border: "1px solid var(--border)" }}
             >
               <p className="text-xs mb-1" style={{ color: "var(--muted)" }}>{s.label}</p>
-              <p className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>{s.value}</p>
+              <p className="break-words text-2xl font-bold" style={{ color: "var(--foreground)" }}>{s.value}</p>
             </div>
           ))}
         </div>
@@ -57,7 +57,7 @@ export default function DashboardPage() {
         <TradingChallenge />
 
         {/* Market grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {SAMPLE_MARKETS.map((market) => (
             <MarketCard key={market.id} market={market} />
           ))}
