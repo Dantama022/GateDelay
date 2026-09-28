@@ -4,6 +4,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpErrorEnvelopeFilter } from './common/http-error-envelope.filter';
 import { expressCorrelationMiddleware, log } from '../utils/correlation';
+import marketMigrationGuardModule from '../middleware/marketMigrationGuard';
+import marketMigrationValidatorModule from '../services/marketMigrationValidator';
 
 // API protection middlewares (Backend/API_PROTECTION_README.md)
 // CommonJS modules under Backend/middleware — required to boot under both NestJS and legacy Express
@@ -20,6 +22,8 @@ const { backwardCompatMiddleware } = require('../middleware/backwardCompat');
 const rateLimitConfig = require('../config/rateLimits');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { assertValidRateLimits } = require('../config/rateLimitsValidation');
+const { assertValidMarketMigrations } = marketMigrationValidatorModule;
+const { marketMigrationGuard } = marketMigrationGuardModule;
 
 async function bootstrap() {
   // Fail the boot on an unsafe rate-limit configuration before the app starts
@@ -34,10 +38,28 @@ async function bootstrap() {
     console.warn(`[main] ${warning}`);
   }
 
+  // Fail the boot if required market database migrations are missing or unapplied
+  try {
+    const migrationReport = await assertValidMarketMigrations();
+    log(
+      'info',
+      `[main] Market migration check passed (${migrationReport.appliedCount}/${migrationReport.totalCount} applied)`,
+    );
+  } catch (err) {
+    console.error(
+      '[main] FATAL: Market migration check failed before server startup:',
+    );
+    console.error((err as Error).message);
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
+    }
+  }
+
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({ origin: process.env.FRONTEND_URL || '*' });
   app.use(expressCorrelationMiddleware);
+  app.use(marketMigrationGuard());
 
   // Apply API protection globally (see API_PROTECTION_README.md)
   // Order: DDoS → throttle → versioning → backward-compat
@@ -96,6 +118,34 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT ?? 4000;
+
+  // Enable NestJS shutdown hooks for signal lifecycle handling
+  app.enableShutdownHooks();
+
+  // Register NestJS resources with the central GracefulShutdownManager
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const gracefulShutdownManager = require('../services/gracefulShutdown');
+  gracefulShutdownManager.registerIngress(
+    'NestJS HTTP Server',
+    () =>
+      new Promise<void>((resolve) => {
+        const server = app.getHttpServer();
+        if (server && typeof server.close === 'function') {
+          server.close(() => resolve());
+        } else {
+          resolve();
+        }
+      }),
+  );
+
+  gracefulShutdownManager.registerDatabase('NestJS App Teardown', async () => {
+    await app.close();
+  });
+
+  if (process.env.NODE_ENV !== 'test') {
+    gracefulShutdownManager.attachSignalListeners();
+  }
+
   await app.listen(port);
   log('info', 'GateDelay Nest backend started', {
     service: 'gatedelay-backend-nest',

@@ -2,7 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
-const { Sequelize } = require('sequelize');
+let Sequelize;
+try {
+  Sequelize = require('sequelize').Sequelize || require('sequelize');
+} catch {
+  Sequelize = null;
+}
 
 const MIGRATIONS_DIR = path.join(__dirname, '../migrations');
 const STATE_FILE = path.join(__dirname, '../data/migration-state.json');

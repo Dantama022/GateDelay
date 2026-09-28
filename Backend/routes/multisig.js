@@ -225,7 +225,7 @@ router.get('/wallet/:walletId', handleErrors(async (req, res) => {
   }
 
   const wallet = multisigService.getWallet(walletId);
-  res.json({ success: true, data: wallet });
+  res.json({ success: true, data: wallet }));
 }));
 
 /**

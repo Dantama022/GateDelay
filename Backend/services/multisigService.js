@@ -100,13 +100,97 @@ function isOwner(walletId, address) {
 }
 
 /**
+ * Verify replay protection (nonce, timestamp, signature)
+ * @param {string} nonce 
+ * @param {number} timestamp 
+ * @param {string} signature 
+ * @param {string} signer 
+ * @param {object} payload 
+ * @returns {object} { valid: boolean, error?: string, recoveredSigner?: string }
+ */
+function verifyReplayProtection(nonce, timestamp, signature, signer, payload) {
+  if (!nonce || typeof nonce !== 'string') {
+    return { valid: false, error: 'Missing or invalid nonce' };
+  }
+
+  if (usedNonces.has(nonce)) {
+    return { valid: false, error: 'Nonce already used (replay detected)' };
+  }
+
+  if (!timestamp || typeof timestamp !== 'number') {
+    return { valid: false, error: 'Missing or invalid timestamp' };
+  }
+
+  const now = Date.now();
+  if (Math.abs(now - timestamp) > MAX_TIMESTAMP_DRIFT_MS) {
+    return {
+      valid: false,
+      error: `Timestamp drift exceeds ${MAX_TIMESTAMP_DRIFT_MS}ms`
+    };
+  }
+
+  if (!signature || typeof signature !== 'string') {
+    return { valid: false, error: 'Missing or invalid signature' };
+  }
+
+  if (!signer || typeof signer !== 'string') {
+    return { valid: false, error: 'Missing or invalid signer' };
+  }
+
+  // Create deterministic message from payload, nonce, and timestamp
+  const sortedPayload = Object.keys(payload)
+    .sort()
+    .reduce((acc, key) => {
+      acc[key] = payload[key];
+      return acc;
+    }, {});
+
+  const message = JSON.stringify({
+    payload: sortedPayload,
+    nonce,
+    timestamp
+  });
+
+  let recoveredSigner;
+  try {
+    recoveredSigner = ethers.verifyMessage(message, signature);
+  } catch {
+    return { valid: false, error: 'Invalid signature format' };
+  }
+
+  if (ethers.getAddress(recoveredSigner) !== ethers.getAddress(signer)) {
+    return { valid: false, error: 'Signature signer mismatch' };
+  }
+
+  // Mark nonce as used
+  usedNonces.set(nonce, timestamp);
+
+  return { valid: true, recoveredSigner };
+}
+
+/**
+ * Cleanup expired nonces (call periodically)
+ */
+function cleanupExpiredNonces() {
+  const now = Date.now();
+  for (const [nonce, ts] of usedNonces.entries()) {
+    if (now - ts > NONCE_TTL_MS) {
+      usedNonces.delete(nonce);
+    }
+  }
+}
+
+// Run cleanup every hour
+setInterval(cleanupExpiredNonces, 60 * 60 * 1000);
+
+/**
  * Propose a new multi-sig transaction
  * @param {string} walletId
  * @param {object} txData
  * @param {string} proposer
  * @returns {string} transactionId
  */
-async function proposeTransaction(walletId, txData, proposer) {
+async function proposeTransaction(walletId, txData, proposer, nonce, timestamp, signature) {
   const wallet = getWallet(walletId);
 
   let normalizedProposer;
@@ -120,6 +204,13 @@ async function proposeTransaction(walletId, txData, proposer) {
     throw new Error('Proposer is not an owner of this multisig');
   }
 
+  // Verify replay protection
+  const payload = { walletId, txData, proposer };
+  const replayResult = verifyReplayProtection(nonce, timestamp, signature, proposer, payload);
+  if (!replayResult.valid) {
+    throw new Error(`Replay protection failed: ${replayResult.error}`);
+  }
+
   const txId = ethers.id(JSON.stringify(txData) + Date.now());
 
   pendingTransactions.set(txId, {
@@ -129,7 +220,9 @@ async function proposeTransaction(walletId, txData, proposer) {
     proposer: normalizedProposer,
     signatures: [],
     status: 'Pending',
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    nonce, // Store nonce for reference
+    timestamp // Store timestamp for reference
   });
 
   return txId;
@@ -143,7 +236,7 @@ async function proposeTransaction(walletId, txData, proposer) {
  * @param {string} owner
  * @param {string} signature
  */
-async function collectSignature(txId, owner, signature) {
+async function collectSignature(txId, owner, signature, nonce, timestamp, signSignature) {
   const tx = pendingTransactions.get(txId);
   if (!tx) throw new Error('Transaction not found');
 
@@ -212,12 +305,18 @@ async function processTransaction(txId, executor) {
     throw new Error(`Insufficient signatures. Required: ${wallet.threshold}, Current: ${tx.signatures.length}`);
   }
 
+  // Verify executor is an owner
+  if (!wallet.owners.includes(executor)) {
+    throw new Error('Executor is not an owner of this multisig');
+  }
+
   console.log(`Executing multisig transaction ${txId} for wallet ${tx.walletId}...`);
 
   // Logic to broadcast to blockchain would go here
   tx.status = 'Executed';
   tx.executedAt = new Date().toISOString();
   tx.txHash = '0x' + Math.random().toString(16).slice(2, 66);
+  tx.executedBy = executor;
 
   return tx;
 }
@@ -238,5 +337,7 @@ module.exports = {
   proposeTransaction,
   collectSignature,
   processTransaction,
-  getTransactionStatus
+  getTransactionStatus,
+  verifyReplayProtection,
+  cleanupExpiredNonces
 };

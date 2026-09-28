@@ -275,12 +275,14 @@ export default function MarketSearch({
             {/* Category */}
             <div>
               <label
+                htmlFor="filter-category"
                 className="text-xs font-semibold"
                 style={{ color: "var(--muted)" }}
               >
                 CATEGORY
               </label>
               <select
+                id="filter-category"
                 value={filters.category || ""}
                 onChange={(e) =>
                   handleFilterChange("category", e.target.value || undefined)
@@ -304,12 +306,14 @@ export default function MarketSearch({
             {/* Status */}
             <div>
               <label
+                htmlFor="filter-status"
                 className="text-xs font-semibold"
                 style={{ color: "var(--muted)" }}
               >
                 STATUS
               </label>
               <select
+                id="filter-status"
                 value={filters.status || ""}
                 onChange={(e) =>
                   handleFilterChange("status", e.target.value || undefined)
@@ -332,12 +336,14 @@ export default function MarketSearch({
             {/* Sort By */}
             <div>
               <label
+                htmlFor="filter-sort"
                 className="text-xs font-semibold"
                 style={{ color: "var(--muted)" }}
               >
                 SORT BY
               </label>
               <select
+                id="filter-sort"
                 value={filters.sortBy}
                 onChange={(e) =>
                   handleFilterChange(
@@ -362,12 +368,14 @@ export default function MarketSearch({
             {/* Min Volume */}
             <div>
               <label
+                htmlFor="filter-min-volume"
                 className="text-xs font-semibold"
                 style={{ color: "var(--muted)" }}
               >
                 MIN VOLUME
               </label>
               <input
+                id="filter-min-volume"
                 type="number"
                 placeholder="0"
                 value={filters.minVolume || ""}
@@ -389,12 +397,14 @@ export default function MarketSearch({
             {/* Max Volume */}
             <div>
               <label
+                htmlFor="filter-max-volume"
                 className="text-xs font-semibold"
                 style={{ color: "var(--muted)" }}
               >
                 MAX VOLUME
               </label>
               <input
+                id="filter-max-volume"
                 type="number"
                 placeholder="∞"
                 value={filters.maxVolume || ""}
@@ -416,12 +426,14 @@ export default function MarketSearch({
             {/* Min Liquidity */}
             <div>
               <label
+                htmlFor="filter-min-liquidity"
                 className="text-xs font-semibold"
                 style={{ color: "var(--muted)" }}
               >
                 MIN LIQUIDITY
               </label>
               <input
+                id="filter-min-liquidity"
                 type="number"
                 placeholder="0"
                 value={filters.minLiquidity || ""}

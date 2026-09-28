@@ -25,6 +25,7 @@ async function validateTradeRequest(req, res, next) {
       type: req.body.type,
       amount: req.body.amount,
       price: req.body.price,
+      oracleTimestamp: req.body.oracleTimestamp || req.body.timestamp,
       timestamp: req.body.timestamp || new Date(),
     };
 
@@ -35,15 +36,20 @@ async function validateTradeRequest(req, res, next) {
       return res.status(400).json({
         success: false,
         error: 'Trade validation failed',
-        code: 'VALIDATION_FAILED',
+        code: validation.errors.find((e) => e.code)?.code || 'VALIDATION_FAILED',
         errors: validation.errors,
         warnings: validation.warnings,
+        oracleFreshness: validation.oracleFreshness,
       });
     }
 
     // Attach validation results to request for downstream use
     req.tradeValidation = validation;
     req.validatedTradeData = tradeData;
+    if (validation.oracleFreshness) {
+      req.oracleFreshness = validation.oracleFreshness;
+      res.setHeader('X-Oracle-Freshness', JSON.stringify(validation.oracleFreshness));
+    }
 
     // Include warnings in response headers if present
     if (validation.warnings.length > 0) {
@@ -298,6 +304,56 @@ async function validateMarketStatus(req, res, next) {
 }
 
 /**
+ * Middleware for validating oracle data freshness prior to trade execution
+ * @param {object} [options]
+ * @param {number} [options.maxAgeSeconds] - Max acceptable age threshold in seconds
+ * @param {string} [options.onStale] - 'block' (default) or 'warn'
+ * @returns {Function} Express middleware
+ */
+function validateOracleFreshness(options = {}) {
+  return async (req, res, next) => {
+    try {
+      const pair = req.body.pair || req.query.pair || req.params.pair;
+      const oracleTimestamp = req.body.oracleTimestamp || req.body.timestamp;
+
+      const result = await tradeValidator.validateOracleFreshness(
+        oracleTimestamp ? { pair, oracleTimestamp } : (pair || 'DEFAULT'),
+        options
+      );
+
+      req.oracleFreshness = result.freshness;
+      if (result.freshness) {
+        res.setHeader('X-Oracle-Freshness', JSON.stringify(result.freshness));
+      }
+
+      if (!result.valid) {
+        return res.status(400).json({
+          success: false,
+          error: 'Stale oracle data detected prior to trade execution',
+          code: result.code || 'STALE_ORACLE_DATA',
+          message: result.message,
+          oracleFreshness: result.freshness,
+        });
+      }
+
+      if (result.warning) {
+        res.setHeader('X-Oracle-Freshness-Warning', result.warning);
+      }
+
+      next();
+    } catch (error) {
+      console.error('Oracle freshness middleware error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Oracle freshness validation error',
+        code: 'VALIDATION_ERROR',
+        message: error.message,
+      });
+    }
+  };
+}
+
+/**
  * Combine multiple validation middlewares
  * Allows chaining specific validations
  */
@@ -341,5 +397,6 @@ module.exports = {
   validateTradeLimits,
   validateTradeBalance,
   validateMarketStatus,
+  validateOracleFreshness,
   validateTrade,
 };

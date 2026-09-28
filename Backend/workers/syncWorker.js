@@ -10,6 +10,8 @@ const {
   withRetry,
 } = require('../services/jobRetryService');
 
+let scheduledCronTask = null;
+
 const startSyncWorker = () => {
   syncQueue.process(async (job) => {
     return withJobContext(
@@ -58,7 +60,7 @@ const startSyncWorker = () => {
     });
   });
 
-  cron.schedule('*/10 * * * *', async () => {
+  scheduledCronTask = cron.schedule('*/10 * * * *', async () => {
     await withJobContext('syncWorker.schedule', {}, async ({ requestId }) => {
       log('info', 'Scheduled sync job triggered', { requestId });
       // A cron tick has no queue to retry it, so bound the retries here. The
@@ -78,4 +80,19 @@ const startSyncWorker = () => {
   log('info', 'Market data sync worker started');
 };
 
-module.exports = { startSyncWorker };
+const stopSyncWorker = async () => {
+  if (scheduledCronTask) {
+    try {
+      scheduledCronTask.stop();
+    } catch {}
+    scheduledCronTask = null;
+  }
+  if (syncQueue) {
+    try {
+      await syncQueue.close();
+    } catch {}
+  }
+  log('info', 'Market data sync worker stopped');
+};
+
+module.exports = { startSyncWorker, stopSyncWorker };

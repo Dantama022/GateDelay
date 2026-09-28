@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getMarketOutcomeLabel } from "@/lib/labels";
 
 export type MarketStatus =
   | "active"
@@ -120,7 +121,7 @@ export default function StatusBadge({
 
       {normalizedStatus === "resolved" && outcome && variant === "full" && (
         <div
-          aria-label={`Resolved outcome: ${outcome}`}
+          aria-label={`Resolved outcome: ${getMarketOutcomeLabel(outcome)}`}
           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-sm font-semibold"
           style={{
             background: outcome === "YES" ? "#22c55e18" : "#ef444418",
@@ -129,7 +130,7 @@ export default function StatusBadge({
           }}
         >
           <span aria-hidden="true">{outcome === "YES" ? "OK" : "x"}</span>
-          <span>{outcome}</span>
+          <span>{getMarketOutcomeLabel(outcome)}</span>
         </div>
       )}
 

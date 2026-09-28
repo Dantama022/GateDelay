@@ -4,6 +4,7 @@ const Order = require('../models/Order');
 const Balance = require('../models/Balance');
 const OnChainTrade = require('../models/OnChainTrade');
 const mongoose = require('mongoose');
+const breakerService = require('./breakerService');
 
 const DEFAULT_FEE_BPS = 30;
 const DEFAULT_REBATE_BPS = 10;
@@ -28,42 +29,48 @@ class TradeEngine {
     }
   }
 
-  async processOrder(orderData) {
-    // Determine the asset to lock
-    const lockAsset = orderData.side === 'Buy' ? orderData.pair.split('-')[1] : orderData.pair.split('-')[0];
-    const lockValue = orderData.side === 'Buy'
-      ? new Big(orderData.price || '0').times(orderData.amount).toString() // Assumes limit for buy. Market buys need different logic.
-      : orderData.amount;
+  async processOrder(orderData, options = {}) {
+    return breakerService.executeWithBreaker(
+      'trade-engine',
+      async () => {
+        // Determine the asset to lock
+        const lockAsset = orderData.side === 'Buy' ? orderData.pair.split('-')[1] : orderData.pair.split('-')[0];
+        const lockValue = orderData.side === 'Buy'
+          ? new Big(orderData.price || '0').times(orderData.amount).toString() // Assumes limit for buy. Market buys need different logic.
+          : orderData.amount;
 
-    let session;
-    try {
-      session = await mongoose.startSession();
-    } catch (e) {
-      // For unit tests without replica sets, session creation might fail. We mock it if it fails.
-      session = {
-        withTransaction: async (cb) => { await cb(); },
-        endSession: () => {},
-        inTransaction: () => true
-      };
-    }
+        let session;
+        try {
+          session = await mongoose.startSession();
+        } catch (e) {
+          // For unit tests without replica sets, session creation might fail. We mock it if it fails.
+          session = {
+            withTransaction: async (cb) => { await cb(); },
+            endSession: () => {},
+            inTransaction: () => true
+          };
+        }
 
-    let result;
+        let result;
 
-    try {
-      if (session.withTransaction) {
-        await session.withTransaction(async () => {
-          result = await this._executeOrderFlow(orderData, lockAsset, lockValue, session);
-        });
-      } else {
-         result = await this._executeOrderFlow(orderData, lockAsset, lockValue, null);
-      }
-    } finally {
-      if (session.endSession) {
-        session.endSession();
-      }
-    }
+        try {
+          if (session.withTransaction) {
+            await session.withTransaction(async () => {
+              result = await this._executeOrderFlow(orderData, lockAsset, lockValue, session);
+            });
+          } else {
+             result = await this._executeOrderFlow(orderData, lockAsset, lockValue, null);
+          }
+        } finally {
+          if (session.endSession) {
+            session.endSession();
+          }
+        }
 
-    return result;
+        return result;
+      },
+      options
+    );
   }
 
   async _executeOrderFlow(orderData, lockAsset, lockValue, session) {
@@ -261,11 +268,17 @@ class TradeEngine {
   }
 
   // Helper for web3
-  async executeOnChain(web3ProviderUrl, settlementData) {
-      const Web3 = require('web3');
-      const web3 = new Web3(web3ProviderUrl);
-      // Implementation logic for smart contract call
-      return true;
+  async executeOnChain(web3ProviderUrl, settlementData, options = {}) {
+    return breakerService.executeWithBreaker(
+      'blockchain-service',
+      async () => {
+        const Web3 = require('web3');
+        const web3 = new Web3(web3ProviderUrl);
+        // Implementation logic for smart contract call
+        return true;
+      },
+      options
+    );
   }
 }
 
