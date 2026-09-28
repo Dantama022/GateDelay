@@ -129,6 +129,8 @@ export default function SignatureRequest({
     const handleClose = useCallback(() => {
         setIsOpen(false);
         setStatus("idle");
+    }, []);
+
     const isBusy = status === "signing" || status === "pending";
     const isCompleted = status === "success" || status === "rejected" || status === "error";
 
