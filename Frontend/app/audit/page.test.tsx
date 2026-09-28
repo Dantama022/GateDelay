@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AuditPage from "./page";
 
@@ -140,5 +141,26 @@ describe("AuditPage", () => {
     // wrapper — otherwise the whole page scrolls sideways on a phone.
     expect(table.className).toContain("min-w-[880px]");
     expect(table.parentElement?.className).toContain("overflow-x-auto");
+  });
+
+  it("forwards event type, actor, market, and date range filters to the backend query", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("table");
+
+    await user.selectOptions(screen.getByLabelText(/event type/i), "CREATE_MARKET");
+    await user.selectOptions(screen.getByLabelText(/^actor$/i), "admin-01");
+    await user.type(screen.getByLabelText(/^market$/i), "market-100");
+    await user.type(screen.getByLabelText(/from date/i), "2026-06-01");
+    await user.type(screen.getByLabelText(/to date/i), "2026-06-30");
+
+    await vi.waitFor(() => {
+      const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
+      expect(urls.some((url) => url.includes("operation=CREATE_MARKET"))).toBe(true);
+      expect(urls.some((url) => url.includes("actor=admin-01"))).toBe(true);
+      expect(urls.some((url) => url.includes("marketId=market-100"))).toBe(true);
+      expect(urls.some((url) => url.includes("from="))).toBe(true);
+      expect(urls.some((url) => url.includes("to="))).toBe(true);
+    });
   });
 });
