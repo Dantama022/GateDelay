@@ -60,7 +60,6 @@ describe("useWebSocket retry behavior", () => {
         );
 
         act(() => result.current.connect());
-        act(() => socketMock.connect());
         act(() => result.current.subscribe(["market-1"]));
 
         expect(result.current.status).toBe("error");
@@ -78,7 +77,6 @@ describe("useWebSocket retry behavior", () => {
 
         act(() => result.current.connect());
         act(() => result.current.subscribe(["market-1"]));
-        act(() => socketMock.connect());
         act(() => socketMock.disconnect());
 
         expect(result.current.status).toBe("disconnected");

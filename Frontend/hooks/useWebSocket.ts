@@ -208,6 +208,9 @@ export function useWebSocket(config: WebSocketConfig) {
             });
 
             socketRef.current = socket;
+            if (autoConnect === false) {
+                socket.connect();
+            }
         } catch (error) {
             console.error("[WebSocket] Failed to create socket:", error);
             setState({
