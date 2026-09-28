@@ -38,6 +38,8 @@ describe("ConnectModal", () => {
     render(<ConnectModal isOpen onClose={() => {}} />);
     expect(screen.getByTestId("wallet-empty-state")).toBeInTheDocument();
     expect(screen.getByText(/No wallet providers detected/i)).toBeInTheDocument();
+    expect(screen.getByTestId("wallet-signing-unavailable")).toHaveTextContent(/signing is unavailable/i);
+    expect(screen.getByTestId("wallet-signing-unavailable")).toHaveTextContent(/remain available/i);
   });
 
   it("mounts without uncaught errors when wallet globals are missing", () => {
@@ -65,5 +67,6 @@ describe("ConnectModal", () => {
     expect(screen.queryByTestId("wallet-empty-state")).not.toBeInTheDocument();
     expect(screen.getByText("MetaMask")).toBeInTheDocument();
     expect(screen.getByText(/Browser wallet detected/i)).toBeInTheDocument();
+    expect(screen.getByTestId("wallet-signing-unavailable")).toBeInTheDocument();
   });
 });

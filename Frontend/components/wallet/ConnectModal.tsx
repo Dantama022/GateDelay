@@ -299,7 +299,20 @@ export default function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
             )}
 
             {/* Status messages */}
-            {resolutionStatus === "unavailable" && error && (
+            {!particleReady && (
+              <p
+                className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-600"
+                role="status"
+                data-testid="wallet-signing-unavailable"
+              >
+                Wallet signing is unavailable because Particle ConnectKit credentials are missing.
+                Add <code>NEXT_PUBLIC_PROJECT_ID</code>, <code>NEXT_PUBLIC_CLIENT_KEY</code>, and{" "}
+                <code>NEXT_PUBLIC_APP_ID</code> to <code>Frontend/.env.local</code>. Browsing and
+                other non-wallet features remain available.
+              </p>
+            )}
+
+            {particleReady && resolutionStatus === "unavailable" && error && (
               <p
                 className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-600"
                 role="status"
