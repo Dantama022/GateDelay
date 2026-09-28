@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CacheModule } from '@nestjs/cache-manager';
@@ -129,4 +129,10 @@ import { GracefulShutdownService } from './common/graceful-shutdown.service';
   controllers: [AppController],
   providers: [AppService, GracefulShutdownService],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(ApiVersionDeprecationMiddleware)
+      .forRoutes({ path: 'api/v1*', method: RequestMethod.ALL });
+  }
+}
