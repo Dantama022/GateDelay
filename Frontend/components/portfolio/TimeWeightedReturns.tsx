@@ -218,8 +218,8 @@ export default function TimeWeightedReturns() {
                     background: "var(--card)",
                     border: "1px solid var(--border)",
                   }}
-                  labelFormatter={(ts) => format(ts, "MMM d, yyyy")}
-                  formatter={(val: number) => [`${val.toFixed(2)}%`, "Return"]}
+                  labelFormatter={(ts) => format(ts as string | number | Date, "MMM d, yyyy")}
+                  formatter={(val: any) => [`${Number(val).toFixed(2)}%`, "Return"]}
                 />
                 <Line
                   type="monotone"
@@ -261,7 +261,7 @@ export default function TimeWeightedReturns() {
                     background: "var(--card)",
                     border: "1px solid var(--border)",
                   }}
-                  formatter={(val: number) => [`${val.toFixed(2)}%`, "TWR"]}
+                  formatter={(val: any) => [`${Number(val).toFixed(2)}%`, "TWR"]}
                 />
                 <Bar
                   dataKey="twr"

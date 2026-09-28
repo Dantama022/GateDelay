@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {VaultShares}    from "../contracts/VaultShares.sol";
+import {VaultShares}    from "../src/VaultShares.sol";
 import {ERC20}          from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -240,7 +240,7 @@ contract VaultSharesTest is Test {
         _issueAndSetAssets(alice, SHARES_1K, ASSETS_1K);
         vs.setTotalManagedAssets(1_100e18);
         uint256 assets = vs.sharesToAssets(SHARES_500);
-        assertApproxEqRel(assets, 550e18, 1e14, "500 shares → 550 assets at 1.1 pps");
+        assertApproxEqRel(assets, 550e18, 1e14, unicode"500 shares → 550 assets at 1.1 pps");
     }
 
     function test_Value_SupplyStats() public {

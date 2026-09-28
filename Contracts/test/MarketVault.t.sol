@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Test, console2}  from "forge-std/Test.sol";
-import {MarketVault}     from "../contracts/MarketVault.sol";
+import {MarketVault}     from "../src/MarketVault.sol";
 import {ERC20}           from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -389,7 +389,7 @@ contract MarketVaultTest is Test {
     function test_Query_MaxWithdraw() public {
         _deposit(alice, DEPOSIT_1K);
         uint256 max = vault.maxWithdraw(alice);
-        assertApproxEqRel(max, DEPOSIT_1K, 1e15, "max withdraw ≈ deposited");
+        assertApproxEqRel(max, DEPOSIT_1K, 1e15, unicode"max withdraw ≈ deposited");
     }
 
     function test_Query_DepositAndWithdrawalCounts() public {
@@ -498,9 +498,6 @@ contract MarketVaultTest is Test {
     // ─────────────────────────────────────────────────────────────────────────
 
     function _getSnapshot() internal view returns (uint256 ta, uint256 pps, uint256 ts) {
-        MarketVault.PerformanceSnapshot memory s = vault.lastSnapshot();
-        ta  = s.totalAssets;
-        pps = s.pricePerShare;
-        ts  = s.timestamp;
+        (ta, pps, ts) = vault.lastSnapshot();
     }
 }

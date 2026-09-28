@@ -94,6 +94,12 @@ contract TradingTest is Test {
         trading.setFeeSplit(10, 0);
     }
 
+    function testSetCommissionRecipientUnauthorized() public {
+        vm.prank(alice);
+        vm.expectRevert(Trading.Unauthorized.selector);
+        trading.setCommissionRecipient(bob);
+    }
+
     // ── Fee withdrawal ────────────────────────────────────────────────────────
     function testWithdrawFees() public {
         uint256 shares = 10 * WAD;

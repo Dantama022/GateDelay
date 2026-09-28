@@ -7,7 +7,7 @@ import "../src/PositionToken.sol";
 import "../src/LiquidityPool.sol";
 import "../src/MarketFactory.sol";
 import "../src/ERC20Token.sol";
-import "../contracts/PriceOracle.sol";
+import "../src/PriceOracle.sol";
 
 /// @dev Helper: ERC1155 receiver so test contract can hold tokens
 contract ERC1155Holder {

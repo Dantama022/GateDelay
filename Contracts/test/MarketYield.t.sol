@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
-import {MarketYield} from "../contracts/MarketYield.sol";
+import {MarketYield} from "../src/MarketYield.sol";
 
 contract MarketYieldTest is Test {
     MarketYield internal yieldContract;
@@ -369,7 +369,8 @@ contract MarketYieldTest is Test {
         uint256 rate = yieldContract.effectiveAnnualRate(MARKET_1);
 
         // yieldPerShare (0.1) annualized over 30 days -> 0.1 * (365/30) ≈ 1.2167
-        uint256 expected = (10 ether * 1e18 / 100 ether) * (365 days * 1e18 / 30 days) / 1e18;
+        uint256 yieldPerShare = 10 ether * 1e18 / 100 ether;
+        uint256 expected = yieldPerShare * 365 days / 30 days;
         assertApproxEqRel(rate, expected, 1e12); // tight tolerance for rounding
     }
 

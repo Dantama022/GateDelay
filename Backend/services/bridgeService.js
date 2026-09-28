@@ -1,4 +1,5 @@
 const { ethers } = require('ethers');
+const breakerService = require('./breakerService');
 
 /**
  * BRIDGE SERVICE
@@ -112,32 +113,68 @@ function validateTransfer({ protocol, sourceChain, destChain, token, amount, rec
  * @param {string} params.recipient - Destination address
  * @returns {Promise<object>} the created transfer record
  */
-async function initiateTransfer(params) {
+async function initiateTransfer(params, options = {}) {
   validateTransfer(params);
 
-  const proto = PROTOCOLS[params.protocol];
-  const transferId = 'brg_' + Math.random().toString(36).substr(2, 9);
+  const serviceName = params.protocol ? `bridge-${params.protocol.toLowerCase()}` : 'bridge-service';
 
-  const transfer = {
-    id: transferId,
-    protocol: proto.name,
-    sourceChain: params.sourceChain,
-    destChain: params.destChain,
-    token: params.token,
-    amount: Number(params.amount),
-    sender: params.sender,
-    recipient: params.recipient,
-    status: TRANSFER_STATUS.PENDING,
-    confirmations: 0,
-    requiredConfirmations: proto.confirmations,
-    sourceTxHash: null,
-    destTxHash: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+  const defaultFallback = async (err) => {
+    const proto = PROTOCOLS[params.protocol];
+    const transferId = 'brg_fb_' + Math.random().toString(36).substr(2, 9);
+    const fallbackTransfer = {
+      id: transferId,
+      protocol: proto ? proto.name : params.protocol,
+      sourceChain: params.sourceChain,
+      destChain: params.destChain,
+      token: params.token,
+      amount: Number(params.amount),
+      sender: params.sender,
+      recipient: params.recipient,
+      status: TRANSFER_STATUS.FAILED,
+      failureReason: `Fallback: ${err.message}`,
+      isFallback: true,
+      circuitState: err.code === 'CIRCUIT_BREAKER_OPEN' ? 'OPEN' : 'DEGRADED',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    transfers.set(transferId, fallbackTransfer);
+    return fallbackTransfer;
   };
 
-  transfers.set(transferId, transfer);
-  return transfer;
+  const fallbackHandler = options.fallback || (options.useFallback ? defaultFallback : undefined);
+
+  return breakerService.executeWithBreaker(
+    serviceName,
+    async () => {
+      const proto = PROTOCOLS[params.protocol];
+      const transferId = 'brg_' + Math.random().toString(36).substr(2, 9);
+
+      const transfer = {
+        id: transferId,
+        protocol: proto.name,
+        sourceChain: params.sourceChain,
+        destChain: params.destChain,
+        token: params.token,
+        amount: Number(params.amount),
+        sender: params.sender,
+        recipient: params.recipient,
+        status: TRANSFER_STATUS.PENDING,
+        confirmations: 0,
+        requiredConfirmations: proto.confirmations,
+        sourceTxHash: null,
+        destTxHash: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      transfers.set(transferId, transfer);
+      return transfer;
+    },
+    {
+      timeoutMs: options.timeoutMs || 10000,
+      fallback: fallbackHandler,
+    }
+  );
 }
 
 /**
@@ -240,6 +277,8 @@ async function getBridgeAnalytics() {
     volumeByToken[t.token] = (volumeByToken[t.token] || 0) + t.amount;
   }
 
+  const breakerStatus = await breakerService.getAllBreakerStatus();
+
   return {
     totalTransfers: all.length,
     completedTransfers: completed.length,
@@ -249,6 +288,7 @@ async function getBridgeAnalytics() {
     volumeByProtocol,
     volumeByToken,
     successRate: all.length > 0 ? (completed.length / all.length).toFixed(2) : '0.00',
+    circuitBreakers: breakerStatus.summary,
     timestamp: new Date().toISOString(),
   };
 }

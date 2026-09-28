@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import StatusBadge, { MarketStatus } from "@/components/market/StatusBadge";
+import { useToast } from "@/hooks/useToast";
 
 interface FavoritedMarket {
   id: string;
@@ -12,11 +14,12 @@ interface FavoritedMarket {
   noPrice: number;
   volume: number;
   liquidity: number;
-  status: "open" | "closed" | "resolved" | "disputed";
+  status: MarketStatus;
 }
 
 export default function FavoritesPage() {
   const router = useRouter();
+  const { success } = useToast();
   const [favorites, setFavorites] = useState<string[]>([]);
   const [markets, setMarkets] = useState<FavoritedMarket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,17 +47,18 @@ export default function FavoritesPage() {
       noPrice: 0.5 - Math.random() * 0.3,
       volume: Math.floor(Math.random() * 50000) + 10000,
       liquidity: Math.floor(Math.random() * 100000) + 50000,
-      status: (["open", "closed", "resolved", "disputed"] as const)[index % 4],
+      status: (["open", "paused", "resolved", "cancelled"] as const)[index % 4],
     }));
 
     setMarkets(mockMarkets);
   }, [favorites]);
 
-  const handleRemoveFavorite = (marketId: string) => {
+  const handleRemoveFavorite = useCallback((marketId: string) => {
     const updated = favorites.filter((id) => id !== marketId);
     localStorage.setItem("market_favorites", JSON.stringify(updated));
     setFavorites(updated);
-  };
+    success("Removed from favorites", undefined, { duration: 2500 });
+  }, [favorites, success]);
 
   if (isLoading) {
     return (
@@ -144,31 +148,7 @@ export default function FavoritesPage() {
                   </p>
 
                   {/* Status Badge */}
-                  <div>
-                    <span
-                      className="inline-block px-2 py-1 rounded text-xs font-semibold"
-                      style={{
-                        background:
-                          market.status === "open"
-                            ? "#22c55e18"
-                            : market.status === "closed"
-                              ? "#f59e0b18"
-                              : market.status === "resolved"
-                                ? "#6366f118"
-                                : "#ef444418",
-                        color:
-                          market.status === "open"
-                            ? "#22c55e"
-                            : market.status === "closed"
-                              ? "#f59e0b"
-                              : market.status === "resolved"
-                                ? "#6366f1"
-                                : "#ef4444",
-                      }}
-                    >
-                      {market.status.charAt(0).toUpperCase() + market.status.slice(1)}
-                    </span>
-                  </div>
+                  <StatusBadge status={market.status} />
 
                   {/* Prices */}
                   <div className="flex gap-2">
