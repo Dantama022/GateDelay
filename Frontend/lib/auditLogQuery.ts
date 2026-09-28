@@ -59,8 +59,9 @@ export function buildMarketAuditSearchParams(filters: AuditLogFilters): URLSearc
   if (!isSentinel(filters.actor) && IDENTIFIER_PATTERN.test(filters.actor!)) {
     params.set("actor", filters.actor!);
   }
-  if (!isSentinel(filters.marketId) && IDENTIFIER_PATTERN.test(filters.marketId.trim())) {
-    params.set("marketId", filters.marketId.trim());
+  const marketId = filters.marketId?.trim();
+  if (marketId && marketId !== "all" && IDENTIFIER_PATTERN.test(marketId)) {
+    params.set("marketId", marketId);
   }
   if (filters.from) {
     const from = toAuditIsoRangeStart(filters.from);

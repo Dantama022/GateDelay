@@ -50,6 +50,7 @@ import { BalanceModule } from './balance/balance.module';
 import { HealthModule } from './health/health.module';
 
 import { GracefulShutdownService } from './common/graceful-shutdown.service';
+import { ApiVersionDeprecationMiddleware } from './common/middleware/api-version-deprecation.middleware';
 
 @Module({
   imports: [
@@ -130,7 +131,7 @@ import { GracefulShutdownService } from './common/graceful-shutdown.service';
   providers: [AppService, GracefulShutdownService],
 })
 export class AppModule {
-  configure(consumer: MiddlewareConsumer) {
+  configure(consumer: MiddlewareConsumer): void {
     consumer
       .apply(ApiVersionDeprecationMiddleware)
       .forRoutes({ path: 'api/v1*', method: RequestMethod.ALL });
