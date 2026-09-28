@@ -152,12 +152,12 @@ contract PriceOracle is Ownable {
             return (primary.price, primary.updatedAt);
         }
 
-        // Try fallback
+        // Try fallback feed
         bytes32 fb = fallbackFeed[feedId];
         if (fb != bytes32(0) && feeds[fb].active) {
-            FeedData storage fallback = feeds[fb];
-            if (_isFresh(fallback)) {
-                return (fallback.price, fallback.updatedAt);
+            FeedData storage fallbackFeedData = feeds[fb];
+            if (_isFresh(fallbackFeedData)) {
+                return (fallbackFeedData.price, fallbackFeedData.updatedAt);
             }
         }
 

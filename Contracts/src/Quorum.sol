@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@prb/math/src/Common.sol";
+import "../contracts/PRBMathUD60x18Compat.sol";
 
 /// @title Quorum
 /// @notice Manages quorum requirements for governance decisions.
 contract Quorum {
-    using PRBMath for uint256;
+    using PRBMathUD60x18Compat for uint256;
 
     // -------------------------------------------------------------------------
     // Custom errors

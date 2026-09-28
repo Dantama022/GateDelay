@@ -70,7 +70,10 @@ contract JurySelection {
         }
 
         address[] storage members = _juries[juryId].members;
-        members = new address[](0);
+        // Clear the storage array by popping all elements
+        while (members.length > 0) {
+            members.pop();
+        }
 
         // pick first `size` unique and valid addresses
         uint256 count = 0;

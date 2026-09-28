@@ -4,9 +4,11 @@ pragma solidity ^0.8.20;
 import "./MarketFactory.sol";
 import "./PositionToken.sol";
 import "./LiquidityPool.sol";
+import "../contracts/PriceOracle.sol";
 
 /// @title Resolution
 /// @notice Manages the full lifecycle of market resolution, disputes, payouts, and refunds.
+/// @dev Adds oracle freshness enforcement before resolution and payout execution.
 contract Resolution {
     // -------------------------------------------------------------------------
     // Custom errors
@@ -22,6 +24,8 @@ contract Resolution {
     error NotAdmin();
     error MarketNotDisputed();
     error MarketNotResolved();
+    error OracleFeedNotRegistered();
+    error OracleFeedStale();
 
     // -------------------------------------------------------------------------
     // Types
@@ -42,6 +46,8 @@ contract Resolution {
     event DisputeRaised(address indexed market, address indexed disputer, string evidenceURI);
     event PayoutClaimed(address indexed market, address indexed claimant, uint256 amount);
     event RefundClaimed(address indexed market, address indexed claimant, uint256 amount);
+    event OracleFeedRegistered(address indexed market, bytes32 indexed feedId);
+    event OracleFreshnessEnforced(address indexed market, bytes32 indexed feedId, uint256 price);
 
     // -------------------------------------------------------------------------
     // Immutable state
@@ -50,6 +56,7 @@ contract Resolution {
     address public immutable resolver;
     address public immutable admin;
     PositionToken public immutable positionToken;
+    PriceOracle public immutable priceOracle;
 
     // -------------------------------------------------------------------------
     // Mutable state
@@ -61,6 +68,8 @@ contract Resolution {
     mapping(address => address) private _pools;
     /// @dev market => resolution deadline
     mapping(address => uint256) private _deadlines;
+    /// @dev market => oracle feed ID for resolution
+    mapping(address => bytes32) private _oracleFeedIds;
 
     // -------------------------------------------------------------------------
     // Constructor
@@ -69,26 +78,32 @@ contract Resolution {
         uint256 _disputeWindowSeconds,
         address _resolver,
         address _admin,
-        address _positionToken
+        address _positionToken,
+        address _priceOracle
     ) {
         disputeWindowSeconds = _disputeWindowSeconds;
         resolver = _resolver;
         admin = _admin;
         positionToken = PositionToken(_positionToken);
+        priceOracle = PriceOracle(_priceOracle);
     }
 
     // -------------------------------------------------------------------------
     // External functions
     // -------------------------------------------------------------------------
 
-    /// @notice Register a market with its pool and resolution deadline.
-    /// @param market  The market address.
-    /// @param pool    The LiquidityPool address for this market.
-    /// @param deadline  The resolution deadline (Unix timestamp).
-    function registerMarket(address market, address pool, uint256 deadline) external {
+    /// @notice Register a market with its pool, resolution deadline, and oracle feed ID.
+    /// @param market      The market address.
+    /// @param pool        The LiquidityPool address for this market.
+    /// @param deadline    The resolution deadline (Unix timestamp).
+    /// @param oracleFeedId The PriceOracle feed ID for this market's outcome.
+    function registerMarket(address market, address pool, uint256 deadline, bytes32 oracleFeedId) external {
         _pools[market] = pool;
         _deadlines[market] = deadline;
+        _oracleFeedIds[market] = oracleFeedId;
         _marketStatus[market] = MarketFactory.MarketStatus.OPEN;
+
+        emit OracleFeedRegistered(market, oracleFeedId);
     }
 
     /// @notice Resolve a market with an outcome and supporting data.
@@ -100,6 +115,15 @@ contract Resolution {
         if (block.timestamp <= _deadlines[market]) revert DeadlineNotPassed();
         if (_marketStatus[market] != MarketFactory.MarketStatus.OPEN) revert MarketNotOpen();
         if (data.length == 0) revert EmptyResolutionData();
+
+        // Enforce oracle freshness before resolution
+        bytes32 oracleFeedId = _oracleFeedIds[market];
+        if (oracleFeedId == bytes32(0)) revert OracleFeedNotRegistered();
+
+        (int256 price, uint256 updatedAt) = priceOracle.getPrice(oracleFeedId);
+        if (price <= 0) revert OracleFeedStale();
+
+        emit OracleFreshnessEnforced(market, oracleFeedId, uint256(price));
 
         _records[market] = ResolutionRecord({
             outcome: outcome,
@@ -148,6 +172,15 @@ contract Resolution {
     function claimPayout(address market) external {
         if (block.timestamp <= _disputeWindowEnd[market]) revert DisputeWindowActive();
         if (_marketStatus[market] != MarketFactory.MarketStatus.RESOLVED) revert MarketNotResolved();
+
+        // Enforce oracle freshness before payout execution
+        bytes32 oracleFeedId = _oracleFeedIds[market];
+        if (oracleFeedId == bytes32(0)) revert OracleFeedNotRegistered();
+
+        (int256 price, uint256 updatedAt) = priceOracle.getPrice(oracleFeedId);
+        if (price <= 0) revert OracleFeedStale();
+
+        emit OracleFreshnessEnforced(market, oracleFeedId, uint256(price));
 
         Outcome outcome = _records[market].outcome;
         uint256 winningId = outcome == Outcome.YES
