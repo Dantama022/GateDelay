@@ -7,6 +7,7 @@ import { useToast } from "../../hooks/useToast";
 import { ErrorBoundary } from "../../app/components/ui/ErrorBoundary";
 import { CheckSquare, Square, Loader2, CheckCircle2, XCircle, AlertCircle, RotateCcw, Play } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTrackTransaction } from "../../hooks/useTransactionTracker";
 
 // ─── Contract Configuration ──────────────────────────────────────────────────
 
@@ -81,6 +82,7 @@ function BatchTradingInner() {
 
   // Wagmi Hooks
   const { writeContract, data: txHash, isPending: isSigning, error: signError, reset: resetWrite } = useWriteContract();
+  useTrackTransaction(txHash, "Batch market trade");
   const { isLoading: isConfirming, isSuccess, error: confirmError } = useWaitForTransactionReceipt({ hash: txHash });
 
   const { control, handleSubmit, formState: { errors, isValid } } = useForm<BatchFormValues>({

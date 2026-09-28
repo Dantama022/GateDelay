@@ -18,6 +18,7 @@ import { truncateTxHash, explorerTxUrl } from "@/lib/txUtils";
 import StalePriceWarning from "@/components/market/StalePriceWarning";
 import { formatCurrency, formatLiquidity, formatOdds, formatTokenAmount, formatVolume } from "@/lib/formatters";
 import { getMarketOutcomeLabel } from "@/lib/labels";
+import { useTrackTransaction } from "@/hooks/useTransactionTracker";
 
 // ── ABI (only the buy function) ──────────────────────────────────────────────
 const MARKET_MAKER_ABI = [
@@ -70,6 +71,7 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
 
   // Trade execution hooks
   const { writeContract, data: txHash, isPending: isSigning, error: signError, reset: resetWrite } = useWriteContract();
+  useTrackTransaction(txHash, "Market trade");
   const { isLoading: isConfirming, isSuccess, error: confirmError } = useWaitForTransactionReceipt({ hash: txHash });
 
   const [isProgressOpen, setIsProgressOpen] = useState(false);

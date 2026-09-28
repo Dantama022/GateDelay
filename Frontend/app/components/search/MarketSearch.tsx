@@ -1,7 +1,8 @@
 "use client";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { debounce } from "lodash";
-import { ChevronDown, X, Share2, Bookmark } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, X, Share2, Bookmark, Search, Compass, Star } from "lucide-react";
 
 export interface Market {
   id: string;
@@ -61,7 +62,7 @@ export default function MarketSearch({
     debouncedSearch(newFilters);
   };
 
-  const handleFilterChange = (key: keyof SearchFilters, value: any) => {
+  const handleFilterChange = (key: keyof SearchFilters, value: string | number | undefined) => {
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters);
     onSearch?.(newFilters);
@@ -497,20 +498,57 @@ export default function MarketSearch({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-sm" style={{ color: "var(--muted)" }}>
-            {isLoading ? "Searching..." : `${filteredMarkets.length} results`}
+            {isLoading ? "Searching…" : `${filteredMarkets.length} results`}
           </p>
         </div>
 
         {filteredMarkets.length === 0 ? (
           <div
-            className="p-8 rounded-lg text-center"
+            className="rounded-lg border p-8 text-center"
             style={{
               background: "var(--card)",
               borderColor: "var(--border)",
-              border: "1px solid var(--border)",
             }}
           >
-            <p style={{ color: "var(--muted)" }}>No markets found</p>
+            <Search size={24} aria-hidden="true" className="mx-auto mb-3" style={{ color: "var(--muted)" }} />
+            <h3 className="font-semibold" style={{ color: "var(--foreground)" }}>
+              {isLoading ? "Searching markets" : "No markets found"}
+            </h3>
+            <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
+              {isLoading
+                ? "Searching…"
+                : hasActiveFilters
+                ? "Try a different search or clear your filters to see more markets."
+                : "There aren't any markets to show right now. Browse or check back soon."}
+            </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="rounded-lg px-4 py-2 text-sm font-semibold"
+                  style={{ background: "#2563eb", color: "white" }}
+                >
+                  Clear search and filters
+                </button>
+              )}
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold"
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              >
+                <Compass size={15} aria-hidden="true" />
+                Browse markets
+              </Link>
+              <Link
+                href="/favorites"
+                className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold"
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              >
+                <Star size={15} aria-hidden="true" />
+                View favorites
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="space-y-2">

@@ -12,6 +12,7 @@ import {
 import type { Abi } from "viem";
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useToast } from "@/hooks/useToast";
+import { useTrackTransaction } from "@/hooks/useTransactionTracker";
 
 type OpportunityStatus = "live" | "ending-soon" | "paused";
 
@@ -230,6 +231,7 @@ export default function LiquidityMining({
 
   const { writeContract, data: txHash, isPending: isSigning, error: signError, reset: resetWrite } =
     useWriteContract();
+  useTrackTransaction(txHash, "Liquidity participation update");
   const {
     isLoading: isConfirming,
     isSuccess: isConfirmed,

@@ -50,6 +50,9 @@ export class SendNotificationDto {
     'price_alert',
     'system',
     'weekly_digest',
+    'trade_filled',
+    'dispute_opened',
+    'market_resolved',
   ])
   type: NotificationType;
 

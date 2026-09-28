@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { useConnectKitBridge } from "../../app/components/ConnectKitBridgeContext";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useTrackTransaction } from "@/hooks/useTransactionTracker";
 import {
   MARKET_RULES,
   validateResolutionDeadline,
@@ -541,6 +542,7 @@ export default function CreateMarketForm() {
   const [txError, setTxError] = useState<string | null>(null);
 
   const { writeContract, data: txHash, isPending: isSigning } = useWriteContract();
+  useTrackTransaction(txHash, "Create market");
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash: txHash,
   });

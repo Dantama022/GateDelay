@@ -21,6 +21,7 @@ import {
   Settings
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTrackTransaction } from "../../hooks/useTransactionTracker";
 
 // ─── Contract Configuration ──────────────────────────────────────────────────
 
@@ -194,6 +195,7 @@ function QuickTradeWidgetInner() {
 
   // Wagmi hooks
   const { writeContract, data: txHash, isPending: isSigning, error: signError, reset: resetWrite } = useWriteContract();
+  useTrackTransaction(txHash, "Quick trade");
   const { isLoading: isConfirming, isSuccess, error: confirmError } = useWaitForTransactionReceipt({ hash: txHash });
 
   // Initialize cached recent assets

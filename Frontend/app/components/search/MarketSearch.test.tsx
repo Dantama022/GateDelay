@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, within, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Suspense } from "react";
 import { ReadonlyURLSearchParams } from "next/navigation";
@@ -338,6 +338,18 @@ describe("empty results", () => {
     renderSearch([]);
     expect(screen.getByText(/no markets found/i)).toBeInTheDocument();
     expect(screen.getByText(/0 results/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /browse markets/i })).toHaveAttribute("href", "/dashboard");
+    expect(screen.getByRole("link", { name: /view favorites/i })).toHaveAttribute("href", "/favorites");
+  });
+
+  it("clears a no-match search from the empty state", async () => {
+    const user = userEvent.setup();
+    renderSearch();
+    await user.type(screen.getByPlaceholderText(/search markets/i), "xyzzy-no-match-8675309");
+    await user.click(screen.getByRole("button", { name: /clear search and filters/i }));
+
+    expect(screen.getByText(/4 results/i)).toBeInTheDocument();
+    expect(screen.getByText("Will AA123 arrive on time?")).toBeInTheDocument();
   });
 
   it("shows 'Searching…' label while isLoading is true", () => {

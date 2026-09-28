@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { MarketListSkeleton } from "./components/ui/Skeleton";
 import QuickTradeWidget from "../components/trade/QuickTradeWidget";
 import { formatOdds, formatVolume } from "@/lib/formatters";
+import { Compass, Search } from "lucide-react";
 
 // Replace with a real API call (e.g. fetch /api/markets) once the backend
 // market-list endpoint is available.
@@ -64,6 +65,37 @@ export default function Home() {
                   </div>
                 </Link>
               ))}
+              {SAMPLE_MARKETS.length === 0 && (
+                <div
+                  className="rounded-lg border px-5 py-6"
+                  style={{ background: "var(--card)", borderColor: "var(--border)" }}
+                >
+                  <h3 className="font-semibold" style={{ color: "var(--foreground)" }}>
+                    No active markets to show yet
+                  </h3>
+                  <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
+                    Search for a market or browse the full market list. You can favorite markets to keep them close.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link
+                      href="/dashboard"
+                      className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold"
+                      style={{ background: "#2563eb", color: "white" }}
+                    >
+                      <Compass size={15} aria-hidden="true" />
+                      Browse markets
+                    </Link>
+                    <Link
+                      href="/markets/search"
+                      className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold"
+                      style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                    >
+                      <Search size={15} aria-hidden="true" />
+                      Search markets
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           </Suspense>
         </section>
