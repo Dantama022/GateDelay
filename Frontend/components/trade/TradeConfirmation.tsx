@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 interface TradeConfirmationProps {
     isOpen: boolean;
@@ -19,6 +21,17 @@ export default function TradeConfirmation({
     onClose,
     onConfirm,
 }: TradeConfirmationProps) {
+    const panelRef = useRef<HTMLDivElement>(null);
+    useFocusTrap(panelRef, isOpen);
+
+    // Escape to close
+    useEffect(() => {
+        if (!isOpen) return;
+        const handler = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } };
+        document.addEventListener("keydown", handler, true);
+        return () => document.removeEventListener("keydown", handler, true);
+    }, [isOpen, onClose]);
+
     const shares = amount > 0 ? (amount / price).toFixed(2) : "--";
     const totalCost = amount.toFixed(2);
     const platformFee = amount * 0.0025;
@@ -45,6 +58,7 @@ export default function TradeConfirmation({
                     />
 
                     <motion.div
+                        ref={panelRef}
                         key="modal"
                         role="dialog"
                         aria-modal="true"
