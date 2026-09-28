@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@prb/math/src/Common.sol";
+import "./PRBMathUD60x18Compat.sol";
 
 /// @title Quorum
 /// @notice Manages quorum requirements for governance decisions.
 contract Quorum {
+    using PRBMathUD60x18Compat for uint256;
 
     // -------------------------------------------------------------------------
     // Custom errors
@@ -71,7 +72,7 @@ contract Quorum {
             return quorumConfig.threshold;
         } else {
             // PERCENTAGE: threshold is in basis points (e.g., 50e18 = 50%)
-            return mulDiv(totalVotes, quorumConfig.threshold, 100e18);
+            return totalVotes.mulDiv(quorumConfig.threshold, 100e18);
         }
     }
 

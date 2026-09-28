@@ -12,6 +12,7 @@ import {MarketMinter} from "../src/MarketMinter.sol";
 import {MarketSettlement} from "../src/MarketSettlement.sol";
 import {MarketWithdraw} from "../src/MarketWithdraw.sol";
 import {PositionToken} from "../src/PositionToken.sol";
+import {PriceOracle} from "../src/PriceOracle.sol";
 import {Resolution} from "../src/Resolution.sol";
 import {Trading} from "../src/Trading.sol";
 
@@ -52,6 +53,8 @@ contract CoreFlowGasTest is Test {
     uint256 internal constant MINT_GAS = 120_000;
     uint256 internal constant WITHDRAW_GAS = 40_000;
 
+    bytes32 internal constant ORACLE_FEED = keccak256("ORACLE/USD");
+
     function test_gas_trade() public {
         ERC20Token token = new ERC20Token(0);
         MarketMaker mm = new MarketMaker(address(token));
@@ -75,9 +78,14 @@ contract CoreFlowGasTest is Test {
         MarketFactory factory = new MarketFactory(address(positionToken));
         address market = address(0xDEAD);
         LiquidityPool pool = new LiquidityPool(address(collateral), market);
-        Resolution resolution = new Resolution(1 days, address(this), address(this), address(positionToken));
+        PriceOracle priceOracle = new PriceOracle();
+        priceOracle.registerFeed(ORACLE_FEED, "Oracle/USD", 365 days);
+        priceOracle.setUpdater(address(this), true);
+        priceOracle.updatePrice(ORACLE_FEED, 1e18);
+
+        Resolution resolution = new Resolution(1 days, address(this), address(this), address(positionToken), address(priceOracle));
         pool.setResolution(address(resolution));
-        resolution.registerMarket(market, address(pool), block.timestamp + 1 hours);
+        resolution.registerMarket(market, address(pool), block.timestamp + 1 hours, ORACLE_FEED);
         collateral.mint(address(this), 1_000 ether);
         collateral.approve(address(pool), 1_000 ether);
         pool.deposit(1_000 ether);

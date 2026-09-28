@@ -89,6 +89,7 @@ contract FeeHandler is Ownable, ReentrancyGuard {
      * @param id         Arbitrary identifier (e.g. keccak256("TRADING")).
      * @param feeBps     Fee rate in basis points. Must be ≤ MAX_FEE_BPS.
      * @param recipients List of recipients; shareBps must sum to BPS_DENOMINATOR.
+     *                   Each recipient must have shareBps > 0, and no duplicates allowed.
      * @dev Access: Caller must be the contract owner.
      * @dev Reverts: `FeeTooHigh` if `feeBps > MAX_FEE_BPS` is true. `InvalidRecipients` if
      *     `recipients.length == 0` is true. `ZeroAddress` if `recipients[i].account == address(0)`
@@ -99,8 +100,23 @@ contract FeeHandler is Ownable, ReentrancyGuard {
         if (recipients.length == 0) revert InvalidRecipients();
 
         uint256 shareSum;
+        // Use array to track seen addresses for duplicate detection
+        address[] memory seen = new address[](recipients.length);
+        uint256 seenCount = 0;
+        
         for (uint256 i; i < recipients.length; ++i) {
             if (recipients[i].account == address(0)) revert ZeroAddress();
+            if (recipients[i].shareBps == 0) revert InvalidRecipients();
+            
+            // Check for duplicates
+            for (uint256 j = 0; j < seenCount; ++j) {
+                if (seen[j] == recipients[i].account) revert InvalidRecipients();
+            }
+            seen[seenCount] = recipients[i].account;
+            seenCount++;
+            
+            // Check for overflow in share sum
+            if (shareSum > type(uint256).max - recipients[i].shareBps) revert InvalidRecipients();
             shareSum += recipients[i].shareBps;
         }
         if (shareSum != BPS_DENOMINATOR) revert InvalidRecipients();
