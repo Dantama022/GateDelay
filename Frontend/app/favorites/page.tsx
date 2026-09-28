@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Search, Compass, Star } from "lucide-react";
 import StatusBadge, { MarketStatus } from "@/components/market/StatusBadge";
 import { useToast } from "@/hooks/useToast";
 
@@ -18,7 +18,6 @@ interface FavoritedMarket {
 }
 
 export default function FavoritesPage() {
-  const router = useRouter();
   const { success } = useToast();
   const [favorites, setFavorites] = useState<string[]>([]);
   const [markets, setMarkets] = useState<FavoritedMarket[]>([]);
@@ -92,23 +91,31 @@ export default function FavoritesPage() {
             className="rounded-xl p-12 text-center"
             style={{ background: "var(--card)", border: "1px solid var(--border)" }}
           >
-            <div className="text-4xl mb-4">⭐</div>
+            <Star size={30} aria-hidden="true" className="mx-auto mb-4" style={{ color: "#d49a18" }} />
             <h2 className="text-xl font-semibold mb-2" style={{ color: "var(--foreground)" }}>
-              No Favorites Yet
+              Your watchlist is empty
             </h2>
-            <p className="mb-6" style={{ color: "var(--muted)" }}>
-              Start favoriting markets to keep track of your favorite trading opportunities.
+            <p className="mx-auto mb-6 max-w-lg" style={{ color: "var(--muted)" }}>
+              Save markets here to follow their odds and activity. Browse open markets, then select the star on any market to add it to your favorites.
             </p>
-            <Link
-              href="/markets"
-              className="inline-block px-6 py-2 rounded-lg font-semibold transition-all"
-              style={{
-                background: "#3b82f6",
-                color: "white",
-              }}
-            >
-              Browse Markets
-            </Link>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 font-semibold transition-opacity hover:opacity-90"
+                style={{ background: "#2563eb", color: "white" }}
+              >
+                <Compass size={16} aria-hidden="true" />
+                Browse markets
+              </Link>
+              <Link
+                href="/markets/search"
+                className="inline-flex items-center gap-2 rounded-lg border px-5 py-2.5 font-semibold transition-colors hover:bg-black/5"
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              >
+                <Search size={16} aria-hidden="true" />
+                Search markets
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

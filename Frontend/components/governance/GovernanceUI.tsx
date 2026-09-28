@@ -24,6 +24,7 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { useToast } from "@/hooks/useToast";
+import { useTrackTransaction } from "@/hooks/useTransactionTracker";
 
 // ── Contract ABIs ──────────────────────────────────────────────────────────────
 
@@ -823,6 +824,7 @@ export default function GovernanceUI() {
     isPending: isSigning,
     reset: resetWrite,
   } = useWriteContract();
+  useTrackTransaction(txHash, "Governance vote");
 
   const { isLoading: isConfirming, isSuccess: voteSuccess } =
     useWaitForTransactionReceipt({ hash: txHash });
