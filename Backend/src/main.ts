@@ -228,7 +228,7 @@ async function bootstrap() {
   };
 
   if (!document.paths) {
-    document.paths = {} as Record<string, unknown>;
+    document.paths = {};
   }
   Object.assign(document.paths, legacyPaths);
 
